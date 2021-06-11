@@ -24,7 +24,7 @@ function ratception_struct = preprocess_dannce(filein,fileoutput,animalname,inpu
 
 %% check the input -- no input means run with defaults
 if isempty(filein)
-datahere = load('C:\Users\Jesse Marshall\Documents\GitHub\Movement_analysis\Cortex_analysis\DemoRepo\Data\predictions.mat');
+datahere = load('/home/twd/Dropbox (TadrossLab)/mocapdata_for_tim/CameraCalib_rd13_20190607_occlude_nopedestal/Recording_shaved_headcap_one/DANNCE/predict_results/predictions.mat');
 else
     datahere = load(filein);
 end

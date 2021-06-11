@@ -69,7 +69,7 @@ switch linkname
             'c','c',...
             'm','m','k','k','k'};
         
-    case 'kylemouse'
+    case 'kyle_mouse'
         links =  {[1 2],[2 3],[1 3],[2 4],[4 5],[5 6],[7 8],[4 8],[9 10],[4 10],[12 6],...
             [14 6],[7,15],[4,16],[16,8],[4,18],[9 17],[16 10],[21 6],[19 12]   ,[13 20],[20 14],[11 19]};
         %[11 12], [13 14],
@@ -88,6 +88,12 @@ switch linkname
         birdlinks = load('X:\Jesse\MotionAnalysisCaptures\DANNCE_animals\manuscript_formattedData\bird\bird18.mat');
          links =birdlinks.joints_idx;
             colors =birdlinks.color;
+      colors = num2cell(colors,2);
+links = num2cell(links,2);
+    case 'taddy_mouse'
+          taddylinks = load('/media/twd/dannce-pd/PDBehavior_dannce_v2/left_or_right_colormap.mat');
+         links =taddylinks.joints_idx;
+            colors =taddylinks.color;
       colors = num2cell(colors,2);
 links = num2cell(links,2);
         

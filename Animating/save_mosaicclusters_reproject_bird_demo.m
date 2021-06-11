@@ -124,7 +124,7 @@ clustframes_good(clustframes_good>(floor(size(ratception_struct.aligned_mean_pos
     overwrite=0;
     filename = strcat(videodir,filesep,'clusteredmovie_more_',num2str((ll)),'.mp4');
     if ~exist(filename,'file') || overwrite
-                  v = VideoWriter(filename,'MPEG-4');
+                  v = VideoWriter(filename);
     open(v)
         M=plot_multi_clusters_repro_cont_bird_demo(ratception_struct,ind_cell_repro,numel(ind_cell_repro{1}),v)
   %  writeVideo(v, M)

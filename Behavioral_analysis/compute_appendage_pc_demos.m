@@ -56,7 +56,7 @@ COEFFS_appendages_lengths = cell(1,numel(appendage_names));
 COEFFS_appendages_euc = cell(1,numel(appendage_names));
 
 appendage_gps = 8;%[3:6];
-    save_coeffs = 0;
+    save_coeffs = 1;
 
 fprintf('starting PCA over appendages \n')
 for kk = appendage_gps

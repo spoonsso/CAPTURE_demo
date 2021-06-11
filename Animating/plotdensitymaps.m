@@ -15,16 +15,19 @@ end
 names_default={'Oranges9','Greens9','Reds9','Greens9','Reds9','Blues9','Greys9','Purples9','Purples9','Greys9'}
 
 if nargin<7
-names={'Oranges9','Greens9','Reds9','Greens9','Reds9','Blues9','Greys9','Purples9','Purples9','Greys9'}
+% names={'Oranges9','Greens9','Reds9','Greens9','Reds9','Blues9','Greys9','Purples9','Purples9','Greys9'}
+%names={'Purples9','Reds9'};%{'Reds9','Blues9'};%'blueThresh'};%
 if numel(zValues)==1
     names={'Oranges5'};
 end
 
 else
-    names = {name_in,names_default{:}};
-    if numel(zValues)==1
-    names={name_in};
-end
+%     names = {name_in,names_default{:}};
+%     if numel(zValues)==1
+%     names={name_in};
+%end
+names = name_in;
+display('sorry')
 end
 %names={'Oranges9','Greens9','Reds9','Blues9','Purples9','YlGn9','Greys9','PuRd9','BuGn9','PiYG9','PuOr9'}
 %     
@@ -49,10 +52,19 @@ max_density_maps = max(max_density_maps_arr);
 
 
 for ll =1:numel(zValues)
-colorshere{ll} = cat(1,ones(3,3),othercolor(names{ll},256));%parula(256);
+    
+    if ischar(names{ll})%nargin == 7
+colorshere{ll} = cat(1,ones(3,3),othercolor(names{ll},256));%parula(256);colormap(blueThresh,256));%
+    else
+        colorshere{ll} = cat(1,ones(3,3),name_in{ll});
+    end
 
 if strcmp(class(fighand_in),'matlab.ui.Figure')
-    figure(fighand_in)
+    if ll==1
+    figure(99);%fighand_in)
+    else
+        figure(100);
+    end
 else
 set(gcf,'currentaxes',fighand_in)
 end
@@ -60,6 +72,8 @@ set(gcf,'Color','w')
 
  %subplot(1,numel(zValues)+1,ll)
 %P = impixel;
+%keyboard;
+%density_maps{ll}(density_maps{ll}<prctile(density_maps{ll}(:),75)) = 0; 
 aa = imagesc(flipud(density_maps{ll}));
 %  cmap = colormap(jet)
 cmap=colormap(colorshere{ll});
@@ -92,7 +106,8 @@ index = fix((aa.CData-cmin)/(cmax-cmin)*m)+1; %A
 RGB{ll} = ind2rgb(index,cmap);
 
 axis off
-set(fighand_in,'Color','w')
+% set(fighand_in,'Color','w')
+set(gcf,'Color','w')
 end
 
 colorshere{ll} = cat(1,ones(3,3),othercolor('Oranges5',256));%parula(256);

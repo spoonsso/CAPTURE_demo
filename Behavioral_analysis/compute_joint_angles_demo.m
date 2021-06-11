@@ -27,6 +27,8 @@ allangles_inds = [1,2,3]; %use on knees and arms
    anglestruct = load_mouse_anglestruct() ;
       case 'kyle_mouse'
              anglestruct = load_mouse_kyle_anglestruct() ;
+      case 'taddy_mouse'
+             anglestruct = load_mouse_taddy_anglestruct() ;
   end
 
 segment_pairs=anglestruct.segment_pairs;

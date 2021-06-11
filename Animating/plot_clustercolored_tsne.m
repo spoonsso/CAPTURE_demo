@@ -209,7 +209,7 @@ B = bwboundaries((flipud(nnn)));
 hold on
 for kk = 1:numel(B)
                 if numel(find(analysisstruct.annot_reordered{end,end}==find(analysisstruct.sorted_clust_ind==kk)))>plotthresh
-    plot(B{kk}(:,2),B{kk}(:,1),'Color',[0.95 0.95 0.95])
+    plot(B{kk}(:,2),B{kk}(:,1),'Color','k');%[0.95 0.95 0.95])
                 end
 end
 hold off
