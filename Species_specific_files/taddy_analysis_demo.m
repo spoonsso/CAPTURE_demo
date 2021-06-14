@@ -1,4 +1,4 @@
-%% Demo for bird behavioral analysis
+%% Demo for Tadross lab behavioral analysis
 % ---------------------------
 % (C) Jesse D Marshall 2020
 %     Harvard University
