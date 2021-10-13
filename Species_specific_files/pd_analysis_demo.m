@@ -5,7 +5,7 @@
 
 my_fps = 90; %what is the fps of the video we are analyzing?
 %internal: check dependencies
-[fList,pList] = matlab.codetools.requiredFilesAndProducts('taddy_analysis_demo.m');
+[fList,pList] = matlab.codetools.requiredFilesAndProducts('pd_analysis_demo.m');
 
 
 %% run the analysis
