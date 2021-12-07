@@ -91,7 +91,7 @@ switch linkname
       colors = num2cell(colors,2);
 links = num2cell(links,2);
     case 'taddy_mouse'
-          taddylinks = load('/media/twd/dannce-pd/PDBehavior_dannce_v2/left_or_right_colormap.mat');
+          taddylinks = load('/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/left_or_right_colormap.mat');
          links =taddylinks.joints_idx;
             colors =taddylinks.color;
       colors = num2cell(colors,2);

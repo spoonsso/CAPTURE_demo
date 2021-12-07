@@ -3,15 +3,20 @@
 % (C) Jesse D Marshall 2020
 %     Harvard University
 
+addpath(genpath('/hpc/group/tdunn/joshwu/CAPTURE_demo/'))
+flag = int32(bitor(2,8))
+py.sys.setdlopenflags(flag);
+
+warning('off','MATLAB:chckxy:IgnoreNaN')
+
 my_fps = 90; %what is the fps of the video we are analyzing?
 %internal: check dependencies
 [fList,pList] = matlab.codetools.requiredFilesAndProducts('pd_analysis_demo.m');
 
-
 %% run the analysis
-basedirectory = '/media/twd/dannce-pd/PDBmirror/merged_r01/merged_hr1_2/';
+basedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/CAPTURE_analysis/R01_RPPR/merged_hr1_2/';
 %input predictions in DANNCE format
-animfilename = strcat(basedirectory,filesep,'predictions.mat');
+animfilename = strcat(basedirectory,filesep,predsfile);
 %outputfile
 animfilename_out = strcat(basedirectory,filesep,'ratception_struct.mat');
 
@@ -39,10 +44,12 @@ ratception_struct.predictions = ratception_struct.markers_preproc;
 ratception_struct.sample_factor = floor(300/my_fps);
 ratception_struct.shift = 0;
 
+clear ratception_struct;
+
 %% do embedding
 [analysisstruct,hierarchystruct] = CAPTURE_quickdemo(...
     strcat(basedirectory,filesep,'ratception_struct.mat'),...
-    'taddy_mouse','my_coefficients','taddy_mouse');
+    'taddy_mouse','my_coefficients_big','taddy_mouse');
 save(strcat(basedirectory,filesep,'myanalysisstruct.mat'),'-struct','analysisstruct',...
     '-v7.3')
 save(strcat(basedirectory,filesep,'myhierarchystruct.mat'),'-struct','hierarchystruct',...
@@ -70,3 +77,5 @@ axis equal
 set(gcf,'Position',([100 100 1100 1100]))
 print('-dpng',strcat(plotfolder,'taddysne.png'),'-r1200')
 print('-depsc',strcat(plotfolder,'taddysne.eps'),'-r1200')
+
+disp("Finished!")

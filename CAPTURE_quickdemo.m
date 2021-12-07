@@ -37,6 +37,7 @@ else
     end
 end
 mocapstruct = datafile;
+clear datafile;
 
 if isempty(coefficientfilename)
     coefficient_file = 'demo_coefficients.mat';
@@ -82,14 +83,44 @@ else
     MLmatobj = load(MLmatobjfile);
 end
 
+if isempty(inputfile)
+    datafile = ...
+        load('C:\Users\Jesse Marshall\Documents\GitHub\Movement_analysis\Cortex_analysis\DemoRepo\Data\nolj_Recording_day8_caff1_nolj_imputed.mat');
+    else
+        datafile = load(inputfile);
+        if isstruct(datafile) && numel(fieldnames(datafile)) == 1
+            fname = fieldnames(datafile);
+            datafile = datafile.(fname{1});
+        end
+    end
+mocapstruct = datafile;
+clear datafile;
 % perform a tsne embedding subselecting every 50 frames
 analysisparams.tsnegranularity = 50;
 
 %subselect a particular set of features
 analysisstruct = compute_tsne_features(MLmatobj,mocapstruct,analysisparams);
-
+aligned_mean_position = mocapstruct.aligned_mean_position;
+clear mocapstruct
+clear MLmatobj
 %run tsne
-zvals = tsne(analysisstruct.jt_features);
+% jt_features_size = size(analysisstruct.jt_features)
+% tic
+% zvals = tsne(analysisstruct.jt_features);
+% toc
+% zvals_size = size(zvals)
+pyenv;
+np = py.importlib.import_module("numpy");
+py.importlib.import_module("tsne_gpu");
+features_np = py.numpy.array(analysisstruct.jt_features(:).');
+features_np = features_np.reshape(py.int(size(analysisstruct.jt_features,1)), py.int(size(analysisstruct.jt_features,2)));
+% tic
+zvals = double(py.tsne_gpu.tsne_gpu(features_np));
+% toc
+% save('tsne_embeddings.mat','zvals','zvals_gpu')
+% zvals_gpu_size = size(zvals_gpu)
+% pause
+
 figure(1)
 plot(zvals(:,1),zvals(:,2),'ob','MarkerFaceColor','b')
 analysisstruct.zValues = zvals;
@@ -108,7 +139,7 @@ analysisstruct = compute_analysis_clusters_demo(analysisstruct,params);
 %% behavior plots and movies
 analysisstruct.conditionnames = ratname;
 analysisstruct.ratnames = ratname;
-analysisstruct.filesizes = {size(mocapstruct.aligned_mean_position,1 );};
+analysisstruct.filesizes = {size(aligned_mean_position,1 );};
 
 %% plot a tsne map -- see plotting script for parameter definitions
 h1=figure(609)

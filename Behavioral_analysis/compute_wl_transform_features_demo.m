@@ -1,4 +1,4 @@
-function ML_features = compute_wl_transform_features_demo(mocapstruct,ML_features,coeffstruct_in,overwrite_coeff)
+function ML_features = compute_wl_transform_features_demo(ML_features,coeffstruct_in,overwrite_coeff)
 % function to compute wavelet transform for a set of features. change
 % properties below. 
 if exist(coeffstruct_in,'file')
