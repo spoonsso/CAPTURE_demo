@@ -1,7 +1,7 @@
 
 
 
-function [analysisstruct,hierarchystruct] =  CAPTURE_quickdemo(inputfile,ratnames,coefficientfilename,linkname)
+function [analysisstruct,hierarchystruct] =  CAPTURE_quickdemo(inputfile,ratnames,coefficientfilename,linkname,overwrite_coefficient,tsne_type)
 % File to generate tsne features and run reembedding on a mouse
 %      inputfile: a .mat file that contains a preprocessed dannce struct
 %                 (see preprocess_dannce)
@@ -39,6 +39,7 @@ end
 mocapstruct = datafile;
 clear datafile;
 
+
 if isempty(coefficientfilename)
     coefficient_file = 'demo_coefficients.mat';
 else
@@ -65,7 +66,6 @@ directory_here = pwd;
 %feature filename and whether or not to overwrite
 MLmatobjfile = 'myMLfeatures.mat';
 overwrite_MLmatobjfile = 1;
-overwrite_coefficient=1;
 
 %visualize the mocap data
 %animate_markers_nonaligned_fullmovie_demo(mocapstruct,1:10:10000);
@@ -96,7 +96,7 @@ if isempty(inputfile)
 mocapstruct = datafile;
 clear datafile;
 % perform a tsne embedding subselecting every 50 frames
-analysisparams.tsnegranularity = 50;
+analysisparams.tsnegranularity = 500;
 
 %subselect a particular set of features
 analysisstruct = compute_tsne_features(MLmatobj,mocapstruct,analysisparams);
@@ -104,19 +104,26 @@ aligned_mean_position = mocapstruct.aligned_mean_position;
 clear mocapstruct
 clear MLmatobj
 %run tsne
-% jt_features_size = size(analysisstruct.jt_features)
-% tic
-% zvals = tsne(analysisstruct.jt_features);
-% toc
-% zvals_size = size(zvals)
-pyenv;
-np = py.importlib.import_module("numpy");
-py.importlib.import_module("tsne_gpu");
-features_np = py.numpy.array(analysisstruct.jt_features(:).');
-features_np = features_np.reshape(py.int(size(analysisstruct.jt_features,1)), py.int(size(analysisstruct.jt_features,2)));
-% tic
-zvals = double(py.tsne_gpu.tsne_gpu(features_np));
-% toc
+
+if tsne_type=='old'
+    %%% Old tsne
+    tic
+    zvals = tsne(analysisstruct.jt_features);
+    toc
+elseif tsne_type=='gpu'
+    %%% GPU tSNE
+    pyenv;
+    np = py.importlib.import_module("numpy");
+    py.importlib.import_module("tsne_gpu");
+    features_np = py.numpy.array(analysisstruct.jt_features(:).');
+    features_np = features_np.reshape(py.int(size(analysisstruct.jt_features,1)), py.int(size(analysisstruct.jt_features,2)));
+    % tic
+    zvals = double(py.tsne_gpu.tsne_gpu(features_np));
+    % toc
+else
+    zvals = 0
+end
+
 % save('tsne_embeddings.mat','zvals','zvals_gpu')
 % zvals_gpu_size = size(zvals_gpu)
 % pause
@@ -195,8 +202,8 @@ params.timescales = [1./4 2];
 
 analysisstruct.conditionnames = {'test'};
 analysisstruct.ratname = {ratname};
-
-hierarchystruct=   find_sequences_states_demo(analysisstruct,1,params);
+hierarchystruct = 0;
+% hierarchystruct=   find_sequences_states_demo(analysisstruct,1,params);
 
 %animate_markers_nonaligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
 %    find(hierarchystruct.clustered_behavior{1}==2));

@@ -7,6 +7,8 @@ addpath(genpath('/hpc/group/tdunn/joshwu/CAPTURE_demo/'))
 flag = int32(bitor(2,8))
 py.sys.setdlopenflags(flag);
 
+predsfile='merged_predictions.mat'
+
 if exist('preprocess_struct','var')==0
     preprocess_struct = 'ratception_struct'
 else
@@ -44,37 +46,38 @@ my_fps = 90; %what is the fps of the video we are analyzing?
 [fList,pList] = matlab.codetools.requiredFilesAndProducts('pd_analysis_demo.m');
 
 %% run the analysis
-basedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/CAPTURE_analysis/R01_RPPR/merged_hr1_2/';
+basedirectory = '/hpc/group/tdunn/st3dio/analysis/PDb/';
+savedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/combined_tadross_full/';
 %input predictions in DANNCE format
 animfilename = strcat(basedirectory,filesep,predsfile);
 %outputfile
-animfilename_out = strcat(basedirectory,filesep,preprocess_struct,'.mat');
+animfilename_out = strcat(savedirectory,filesep,preprocess_struct,'.mat');
 
 % input_params.SpineM_marker = 'centerBack';
 % input_params.SpineF_marker = 'backHead';
 % input_params.conversion_factor = 525; %mm/selman
-input_params.repfactor = floor(300/my_fps);
+input_params.repfactor = 1;%floor(300/my_fps);
 
 %% preprocess the data
-ratception_struct = preprocess_dannce(animfilename,animfilename_out,'taddy_mouse',input_params);
+% ratception_struct = preprocess_dannce(animfilename,animfilename_out,'taddy_mouse',input_params);
 
-%% copy over camera information and metadata
-predictionsfile = load(animfilename);
-if isfield(predictionsfile,'cameras')
-    predictionsfieldnames = fieldnames(predictionsfile);
-    for lk=1:numel(predictionsfieldnames)
-        ratception_struct.(predictionsfieldnames{lk}) = predictionsfile.(predictionsfieldnames{lk});
-    end
-end
-save(animfilename_out,'-struct','ratception_struct','-v7.3')
+% %% copy over camera information and metadata
+% predictionsfile = load(animfilename);
+% if isfield(predictionsfile,'cameras')
+%     predictionsfieldnames = fieldnames(predictionsfile);
+%     for lk=1:numel(predictionsfieldnames)
+%         ratception_struct.(predictionsfieldnames{lk}) = predictionsfile.(predictionsfieldnames{lk});
+%     end
+% end
+% save(animfilename_out,'-struct','ratception_struct','-v7.3')
 
-%%
+% %%
 
-ratception_struct.predictions = ratception_struct.markers_preproc;
-ratception_struct.sample_factor = floor(300/my_fps);
-ratception_struct.shift = 0;
+% ratception_struct.predictions = ratception_struct.markers_preproc;
+% ratception_struct.sample_factor = 1;%floor(300/my_fps);
+% ratception_struct.shift = 0;
 
-clear ratception_struct;
+% clear ratception_struct;
 
 %% do embedding
 [analysisstruct,hierarchystruct] = CAPTURE_quickdemo(...
@@ -82,13 +85,13 @@ clear ratception_struct;
     'taddy_mouse',coeff_file,'taddy_mouse',overwrite_coefficient,tsne_type);
 
 disp("saving myanalysisstruct")
-save(strcat(basedirectory,filesep,'myanalysisstruct',analysis_tag,'.mat'),'-struct','analysisstruct',...
+save(strcat(savedirectory,filesep,'myanalysisstruct',analysis_tag,'.mat'),'-struct','analysisstruct',...
     '-v7.3')
 % save(strcat(basedirectory,filesep,'myhierarchystruct.mat'),'-struct','hierarchystruct',...
 %     '-v7.3')
 
 %% plot the tsne
-plotfolder = strcat(basedirectory,filesep,'plots/');
+plotfolder = strcat(savedirectory,filesep,'plots/');
 mkdir(plotfolder)
 
 h1=figure(608)
