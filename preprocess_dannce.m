@@ -19,6 +19,8 @@ function ratception_struct = preprocess_dannce(filein,fileoutput,animalname,inpu
 %                       to align the animal, the relative framerate to 300
 %                       Hz (repfactor = 300/experiment framerate),
 %                       conversion factor (to scale the outputs)
+%                       fps: frame rate of prediction files you're using.
+%                               CAPTURE was original written using 300 Hz
 
 
 
@@ -69,7 +71,7 @@ end
 end
 
 if isempty(input_params) || ~isfield(input_params,'repfactor') 
-params.repfactor =10;
+    params.repfactor = floor(300/input_params.fps);
 else
    params.repfactor = input_params.repfactor;
 end
@@ -87,7 +89,9 @@ if isfield(datahere.predictions,'HeadBR')
 end
 
 % parameters for preprocessing
+% Did not change this from 300 to 90 Hz b/c we changed difforder
 preprocessing_parameters = struct();
+preprocessing_parameters.fps = input_params.fps
 preprocessing_parameters.median_filt_length = 5;
 preprocessing_parameters.bad_frame_vel_thresh = 150; %this effectively turns the velocity criteria off
 preprocessing_parameters.bad_frame_surround_flag = 0;
@@ -97,7 +101,7 @@ preprocessing_parameters.meanvelocity_lowpass = 60;
 preprocessing_parameters.meanvelocity_lowpass = 60;
 preprocessing_parameters.fastvelocity_threshold = 0.01;% 0.1;
 preprocessing_parameters.moving_threshold = 0.00001;%0.015;
-preprocessing_parameters.moving_framewindow = 600;
+preprocessing_parameters.moving_framewindow = 600*(input_params.fps/300); % was originally 600, and changed to 180
 
 % the difference in framerate between the video and the canonical motion capture
 % datasets

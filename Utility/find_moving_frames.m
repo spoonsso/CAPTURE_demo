@@ -1,9 +1,9 @@
 function [moveframes,restframes,filteredvelocity,movementparams] = find_moving_frames(markers_preproc,preprocessing_parameters,showplots,velonly)
-params.fps = 90;
-params.difforder = 10;
+params.fps = preprocessing_parameters.fps;
+params.difforder = round(10*params.fps/300);
 params.medfiltorder = 3;
 params.gaussorder = 2.5;
-  params.difforder_movav = 90;
+  params.difforder_movav = params.fps;
   showplots = 0;
   velonly = 0;
   

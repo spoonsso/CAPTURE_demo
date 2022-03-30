@@ -17,7 +17,7 @@ ratception_struct = [];
  markernames = fieldnames(aa.predictions);
 
 %% replicate
-ratception_struct.fps = 300;
+ratception_struct.fps = preprocessing_parameters.fps;
 
 %% don't have rest
 ratception_struct.markers_preproc = aa.predictions;

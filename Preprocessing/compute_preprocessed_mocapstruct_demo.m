@@ -26,7 +26,7 @@ marker_position = zeros(num_markers,marker_frame_length,3);
 abs_velocity_antialiased = zeros(num_markers,marker_frame_length);
 
 
-dH = designfilt('lowpassiir', 'FilterOrder', 3, 'HalfPowerFrequency', 60/(fps/2), ...
+dH = designfilt('lowpassiir', 'FilterOrder', 3, 'HalfPowerFrequency', 60/(300/2), ...
     'DesignMethod', 'butter');
 [f1,f2] = tf(dH);
 
@@ -75,11 +75,11 @@ if numel(fieldnames(markers))>3
     
     %% get rest/move
     %% get move/not move with a simple threshold -- this is improved below
-    veltrace = (conv(abs_velocity_antialiased(5,:),ones(1,300)./300,'same'));
+    veltrace = (conv(abs_velocity_antialiased(5,:),ones(1,fps)./fps,'same'));
     vel_thresh = preprocessing_parameters.moving_threshold;
     
-    frames_move_old = find(veltrace>vel_thresh);
-    frames_rest_old = find(veltrace<=vel_thresh);
+    % frames_move_old = find(veltrace>vel_thresh);
+    % frames_rest_old = find(veltrace<=vel_thresh);
     
     vel_thresh_fast = preprocessing_parameters.fastvelocity_threshold;
     
@@ -88,11 +88,11 @@ if numel(fieldnames(markers))>3
     [frames_move,frames_rest,veltrace,movethreshparams] = find_moving_frames(markers_preproc,preprocessing_parameters);
     movethreshparams.vel_thresh_fast = vel_thresh_fast;
     
-    frames_move_fast = find(veltrace>vel_thresh_fast);
-    frames_rest_fast = find(veltrace<=vel_thresh_fast);
+    % frames_move_fast = find(veltrace>vel_thresh_fast);
+    % frames_rest_fast = find(veltrace<=vel_thresh_fast);
     
-    fprintf('Old frames moving %f frames resting %f \n',numel(frames_move_old),numel(frames_rest_old));
-    fprintf('NEW Frames moving %f frames resting %f frames move fast \n',numel(frames_move),numel(frames_rest),numel(frames_move_fast));
+    % fprintf('Old frames moving %f frames resting %f \n',numel(frames_move_old),numel(frames_rest_old));
+    fprintf('NEW Frames moving %f frames resting %f frames move fast \n',numel(frames_move),numel(frames_rest));%,numel(frames_move_fast));
     
     
     %             move_frames = zeros(1,numel(veltrace));
@@ -106,8 +106,8 @@ if numel(fieldnames(markers))>3
     %% move/not move -- can change
     mocapstruct.move_frames = frames_move;
     mocapstruct.rest_frames = frames_rest;
-    mocapstruct.move_frames_fast = frames_move_fast;
-    mocapstruct.rest_frames_fast = frames_rest_fast;
+    % mocapstruct.move_frames_fast = frames_move_fast;
+    % mocapstruct.rest_frames_fast = frames_rest_fast;
     mocapstruct.bad_frames_agg = bad_frames_agg;
     %% fill the struct fields
     mocap_struct.veltrace = veltrace;

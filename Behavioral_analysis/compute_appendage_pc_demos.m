@@ -1,4 +1,4 @@
-function ML_features = compute_appendage_pc_demos(modular_cluster_properties_clipped_index_8,ML_features,coeffstruct_in,overwrite_coeff)
+function ML_features = compute_appendage_pc_demos(modular_cluster_properties_clipped_index_8,ML_features,coeffstruct_in,overwrite_coeff, fps)
 
     %% load in the coefficients
     %coeffstruct in is the file
@@ -32,8 +32,8 @@ function ML_features = compute_appendage_pc_demos(modular_cluster_properties_cli
     %hipass clip within a range
     
     %% hipass and clip all of the joint angles
-    params.fps = 300;
-    params.difforder = 10;
+    params.fps = fps;
+    params.difforder = round(10*params.fps/300);
     params.medfiltorder = 3;
     params.gaussorder = 2.5;
     

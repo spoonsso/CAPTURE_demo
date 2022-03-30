@@ -39,7 +39,7 @@ end
 
 warning('off','MATLAB:chckxy:IgnoreNaN')
 
-my_fps = 90; %what is the fps of the video we are analyzing?
+input_params.fps = 90; %what is the fps of the video we are analyzing?
 %internal: check dependencies
 [fList,pList] = matlab.codetools.requiredFilesAndProducts('pd_analysis_demo.m');
 
@@ -53,7 +53,7 @@ animfilename_out = strcat(basedirectory,filesep,preprocess_struct,'.mat');
 % input_params.SpineM_marker = 'centerBack';
 % input_params.SpineF_marker = 'backHead';
 % input_params.conversion_factor = 525; %mm/selman
-input_params.repfactor = floor(300/my_fps);
+input_params.repfactor = 1;%floor(300/my_fps);
 
 %% preprocess the data
 ratception_struct = preprocess_dannce(animfilename,animfilename_out,'taddy_mouse',input_params);
@@ -71,7 +71,7 @@ save(animfilename_out,'-struct','ratception_struct','-v7.3')
 %%
 
 ratception_struct.predictions = ratception_struct.markers_preproc;
-ratception_struct.sample_factor = floor(300/my_fps);
+ratception_struct.sample_factor = 1;%floor(300/my_fps);
 ratception_struct.shift = 0;
 
 clear ratception_struct;

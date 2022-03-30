@@ -96,7 +96,7 @@ if isempty(inputfile)
 mocapstruct = datafile;
 clear datafile;
 % perform a tsne embedding subselecting every 50 frames
-analysisparams.tsnegranularity = 500;
+analysisparams.tsnegranularity = 1;
 
 %subselect a particular set of features
 analysisstruct = compute_tsne_features(MLmatobj,mocapstruct,analysisparams);
@@ -104,6 +104,12 @@ aligned_mean_position = mocapstruct.aligned_mean_position;
 clear mocapstruct
 clear MLmatobj
 %run tsne
+disp("whos post jtfeatures")
+whos
+[status,cmdout] = system('free -h','-echo');
+savedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/combined_tadross_full/fixed/';
+save(strcat(savedirectory,filesep,'analysisstruct_notsne_2.mat'),'-struct','analysisstruct',...
+    '-v7.3')
 
 if tsne_type=='old'
     %%% Old tsne

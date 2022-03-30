@@ -6,7 +6,7 @@ ML_features = struct();
 %saggital/cross section (ie side view)
 fprintf('computing joint angles \n');
 
-disp("whos jointang 1")
+disp("whos joint ang 1")
 whos
 [status,cmdout] = system('free -h','-echo');
 

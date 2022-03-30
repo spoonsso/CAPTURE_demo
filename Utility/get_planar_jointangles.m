@@ -35,8 +35,8 @@
          dot(vector_examine',vector_outofplane')'.*vector_outofplane;
           angle_outofplane = real(acosd(dot(vector_examine_outofplane',vector_plane{1}')'./sqrt(nansum( vector_examine_outofplane.^2,2))));
      figure(68)
-plot(angle_inplane(mocapstruct.move_frames_fast))
-hold on
-plot(angle_outofplane(mocapstruct.move_frames_fast),'r')
-hold off
+% plot(angle_inplane(mocapstruct.move_frames_fast))
+% hold on
+% plot(angle_outofplane(mocapstruct.move_frames_fast),'r')
+% hold off
       end

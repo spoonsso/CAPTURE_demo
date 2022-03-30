@@ -1,4 +1,4 @@
-function ML_features = compute_wl_transform_features_demo(ML_features,coeffstruct_in,overwrite_coeff)
+function ML_features = compute_wl_transform_features_demo(ML_features,coeffstruct_in,overwrite_coeff,fps)
 % function to compute wavelet transform for a set of features. change
 % properties below. 
 a = exist(append(coeffstruct_in,'.mat'),'file')==2
@@ -17,7 +17,7 @@ whos
 [status,cmdout] = system('free -h','-echo');
 
 %% spectrogram parameters
-opts.fps =90./1; %Changed from 300
+opts.fps = fps; %Changed from 300
 opts.clustering_window = opts.fps./2;
 opts.clustering_overlap = opts.fps./4;
 opts.numclusters = 100;
@@ -47,8 +47,8 @@ opts.lambda = 0.1; % regularization
 
         num_spectrogram_pcs= 15;
 
-params.fps = 90; %Changed from 300
-params.difforder = 10;
+params.fps = fps; %Changed from 300
+params.difforder = round(10*params.fps/300);
 params.medfiltorder = 3;
 params.gaussorder = 2.5;
 %% get the appendage segment length pcs as well
