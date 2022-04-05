@@ -13,6 +13,7 @@ class KNNEmbed:
         self.y = y
 
     def predict(self, X):
+        print("Predicting")
         distances, indices = self.index.search(X.astype(np.float32), k=self.k)
         votes = self.y[indices]
         print(votes)

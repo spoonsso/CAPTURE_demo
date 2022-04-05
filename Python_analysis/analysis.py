@@ -1,12 +1,15 @@
 import tsnecuda as tc
 # import h5py
 import numpy as np
-from tqdm import tqdm
 import time
 import sys
 import math 
 from plots import *
 import load_data
+import os
+
+
+# os.system('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/exx/miniconda3/envs/capture/lib/')
 
 config_file = sys.argv[1]
 params = load_data.read_config(config_file)
@@ -23,7 +26,7 @@ for embedding_method in params['embedding_method']:
     template = np.empty((0,np.shape(features)[1]))
     template_idx = []
     filename = ''.join([plot_folder, embedding_method, '_byID_'])
-    for batch in [1]:#np.unique(batch_ID):
+    for batch in np.unique(batch_ID):
         features_ID = features[np.where(batch_ID == batch)[0],:]
         n = np.shape(features_ID)[0]
 
