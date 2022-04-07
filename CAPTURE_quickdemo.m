@@ -108,9 +108,9 @@ disp("whos post jtfeatures")
 whos
 [status,cmdout] = system('free -h','-echo');
 savedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/combined_tadross_full/fixed/';
-save(strcat(savedirectory,filesep,'analysisstruct_notsne_2.mat'),'-struct','analysisstruct',...
+save(strcat(savedirectory,filesep,'analysisstruct_notsne.mat'),'-struct','analysisstruct',...
     '-v7.3')
-
+disp(size(analysisstruct.jt_features))
 if tsne_type=='old'
     %%% Old tsne
     tic

@@ -80,21 +80,21 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
         embed_scatter(temp_embedding, filename=filename)
 
         print("Embedding full dataset onto template")
-        from sklearn.neighbors import KNeighborsRegressor
+        # from sklearn.neighbors import KNeighborsRegressor
 
-        reembedder = KNeighborsRegressor(n_neighbors=5,weights='distance',n_jobs=12)
-        start = time.time()
-        reembedder.fit(template,temp_embedding)
-        print("Total Time: ", time.time()-start)
-        start = time.time()
-        final_embedding = reembedder.predict(full_data)
-        print("Total Time: ", time.time()-start)
-
-        # from KNNEmbed import KNNEmbed
-        # import pdb; pdb.set_trace()
-        # reembedder = KNNEmbed(k=5)
+        # reembedder = KNeighborsRegressor(n_neighbors=5,weights='distance',n_jobs=12)
+        # start = time.time()
         # reembedder.fit(template,temp_embedding)
+        # print("Total Time: ", time.time()-start)
+        # start = time.time()
         # final_embedding = reembedder.predict(full_data)
+        # print("Total Time: ", time.time()-start)
+
+        from KNNEmbed import KNNEmbed
+        # import pdb; pdb.set_trace()
+        reembedder = KNNEmbed(k=5)
+        reembedder.fit(template,temp_embedding)
+        final_embedding = reembedder.predict(full_data)
 
         filename = ''.join([plot_folder, 'tsne_cuda_final'])
         embed_scatter(final_embedding, filename=filename)
