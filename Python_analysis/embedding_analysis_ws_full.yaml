@@ -1,17 +1,17 @@
 # File path of analysis struct with jt_features
-analysis_path: '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/orig_preds_no_upsample/myanalysisstruct.mat'
+analysis_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/full_tadross_data/final_anstruct.mat'
 
 # File path of predictions file
-preds_path: '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/orig_preds_no_upsample/predictions.mat'
+preds_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/full_tadross_data/merged_predictions.mat'
 
 # Output folder of all plots
-out_folder: './orig_preds/'
+out_folder: './initial_tadross_analysis/'
 
 # embedding method (tsne, tsne_split, tsne_cuda, umap)
 embedding_method: ['tsne_cuda']
 
 # variable in predictions file to split by into batches
-batch_name: 'animalID'
+batch_name: 'recordingID'
 
 # analysis_file_path = '/hpc/group/tdunn/joshwu/CAPTURE_demo/combined_tadross_full/fixed/analysisstruct_notsne_2.mat'
 # predictions_file_path = '/hpc/group/tdunn/st3dio/analysis/PDb/merged_predictions.mat'

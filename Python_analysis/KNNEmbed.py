@@ -9,14 +9,13 @@ class KNNEmbed:
 
     def fit(self, X, y):
         self.index = faiss.IndexFlatL2(X.shape[1])
-        self.index.add(X.astype(np.float32))
-        self.y = y
+        self.index.add(np.ascontiguousarray(X,dtype=np.float32))
+        self.y = np.ascontiguousarray(y,dtype=np.float32)
 
     def predict(self, X):
         print("Predicting")
-        distances, indices = self.index.search(X.astype(np.float32), k=self.k)
+        distances, indices = self.index.search(np.ascontiguousarray(X,dtype=np.float32), k=self.k)
         votes = self.y[indices]
-        print(votes)
         predictions = np.mean(votes, axis=1)
         # predictions = np.array([np.argmax(np.bincount(x)) for x in votes])
         return predictions
