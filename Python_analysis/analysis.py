@@ -59,7 +59,7 @@ for embedding_method in params['embedding_method']:
             print("Running tSNE cuda on each batch video")
 
             import tsnecuda as tc
-            tsne = tc.TSNE(n_iter=1000, verbose=2, num_neighbors=300, perplexity=int(n/100), learning_rate=int(n/12))
+            tsne = tc.TSNE(n_iter=1500, verbose=2, num_neighbors=300, perplexity=int(n/100), learning_rate=int(n/12))
             embedding = tsne.fit_transform(features_ID)
             embed_scatter(embedding, filename=''.join([filename, str(batch)]))
 
@@ -79,6 +79,8 @@ for embedding_method in params['embedding_method']:
     print("Total Time: ", time.time()-start)
     print(type(template_idx[0]))
     reembedding = reembed(template, template_idx, features, method=embedding_method, plot_folder=plot_folder)
+
+
 
 
 

@@ -20,6 +20,8 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
+
+*.yaml
 *.png
 *.pyc
 */__pycache__/
