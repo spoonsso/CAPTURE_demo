@@ -45,6 +45,9 @@ def load_data(analysis_path, preds_path, batch_name, subsample=30):
 
     batch_ID = batch_IDs_full[frames_with_good_tracking] # Indexing out batch IDs
 
+    print("Size of dataset")
+    print(np.shape(features))
+
     # Subsample by 30
     features = features[::subsample]
     batch_ID = batch_ID[::subsample]

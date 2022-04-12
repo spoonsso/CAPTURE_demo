@@ -5,14 +5,20 @@ import numpy as np
 
 def embed_scatter(data, 
                   filename = './embedding_scatter',
-                  save = True):
+                  save = True,
+                  colorby = None):
     f = plt.figure()
-    plt.scatter(data[:,0], data[:,1], marker='.', s=3, linewidths=0)
-    plt.title = filename
-    plt.xlabel("Component 1")
-    plt.ylabel("Component 2")
+    if colorby is not None:
+        color=colorby
+    else:
+        color = None
+    plt.scatter(data[:,0], data[:,1], marker='.', s=3, linewidths=0,
+                c=color,cmap='viridis_r', alpha=0.75)
+    if colorby is not None:
+        plt.colorbar()
     if save:
-        plt.savefig(''.join([filename,'.png']))
+        plt.savefig(''.join([filename,'.png']),dpi=400)
+    plt.close()
 
 def clustering(data, filename, bins_per_edge=1000, sigma = 15):
     x_range = int(np.ceil(np.amax(data[:,0])) - np.floor(np.amin(data[:,0])))
@@ -36,36 +42,49 @@ def clustering(data, filename, bins_per_edge=1000, sigma = 15):
     ax = f.add_subplot(111)
     ax.imshow(gauss_filt_hist)
     ax.set_aspect('auto')
-    plt.savefig(''.join([filename,'_2dhist_gauss.png']))
+    plt.savefig(''.join([filename,'_2dhist_gauss.png']),dpi=400)
     plt.close()
 
     print("Calculating watershed")
     watershed_map = watershed(-gauss_filt_hist,connectivity=8, watershed_line=True)
     watershed_borders = np.where(watershed_map==0,1,0)
-    print(watershed_borders)
     f = plt.figure()
     ax = f.add_subplot(111)
     ax.imshow(watershed_borders, cmap='gray_r')
     ax.set_aspect('auto')
-    plt.savefig(''.join([filename,'_watershed.png']))
+    plt.savefig(''.join([filename,'_watershed.png']),dpi=400)
     plt.close()
     data_by_cluster = watershed_map[x_bin_idx.astype(int),y_bin_idx.astype(int)]
     print(str(int(np.amax(data_by_cluster))),"clusters detected")
 
-    return watershed_map, data_by_cluster
+    return watershed_map, data_by_cluster, gauss_filt_hist
 
 def sample_clusters(data, data_by_cluster, size=20):
+    '''
+    Equally sampling points from each cluster for a batchmap
+    IN:
+        data - All of the data in dataset (may be downsampled)
+        data_by_cluster - Cluster number for each point in `data`
+        size - Number of points to sample from a cluster
+    OUT:
+        sampled_points - Values of sampled points from `data`
+        idx - Index in `data` of sampled points
+    '''
     data = np.append(data,np.expand_dims(np.arange(np.shape(data)[0]),axis=1),axis=1)
     sampled_points = np.empty((0,np.shape(data)[1]))
     for cluster_id in np.unique(data_by_cluster):
         points = data[data_by_cluster==cluster_id,:]
         if len(points)==0:
             continue
+        elif len(points)<size:
+            sampled_idx = np.random.choice(np.arange(len(points)), size=size, replace=True)
+            sampled_points = np.append(sampled_points, points[sampled_idx,:], axis=0)
         else:
             num_points = min(len(points),size)
             sampled_points = np.append(sampled_points, 
                                        np.random.permutation(points)[:num_points], 
                                        axis=0)
+    print("Number of points sampled")
     print(sampled_points.shape)
     return sampled_points[:,:-1],np.squeeze(sampled_points[:,-1]).astype(int).tolist()
 
@@ -91,8 +110,8 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
 
         filename = ''.join([plot_folder, 'tsne_cuda_final'])
         embed_scatter(final_embedding, filename=filename)
-        clustering(final_embedding, filename, sigma=50, bins_per_edge=5000)
-        save_file = {'template':template, 'template_embedding': temp_embedding, 'template_idx': template_idx}
+        _, _, density_map = clustering(final_embedding, filename, sigma=50, bins_per_edge=5000)
+        save_file = {'template':template, 'template_embedding': temp_embedding, 'template_idx': np.array(template_idx), 'final_density_map': density_map}
         import hdf5storage
         hdf5storage.savemat(''.join([plot_folder,'results.mat']), save_file)
         print("Saving to ", ''.join([plot_folder,'results.mat']))
@@ -109,3 +128,5 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
         filename = ''.join([plot_folder, 'umap_final'])
         embed_scatter(final_embedding, filename=filename)
         clustering(final_embedding, filename)
+
+    return final_embedding, temp_embedding

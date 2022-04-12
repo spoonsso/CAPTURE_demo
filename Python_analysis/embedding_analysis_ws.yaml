@@ -8,7 +8,7 @@ preds_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/R01_data/predict
 out_folder: './orig_preds/'
 
 # embedding method (tsne, tsne_split, tsne_cuda, umap)
-embedding_method: ['tsne_cuda']
+embedding_method: ['umap']
 
 # variable in predictions file to split by into batches
 batch_name: 'animalID'

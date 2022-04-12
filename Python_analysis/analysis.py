@@ -8,7 +8,6 @@ from plots import *
 import load_data
 import os
 
-
 # os.system('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/exx/miniconda3/envs/capture/lib/')
 
 config_file = sys.argv[1]
@@ -17,7 +16,7 @@ params = load_data.read_config(config_file)
 print(params)
 
 plot_folder = params['out_folder']
-
+os.makedirs(''.join([plot_folder,'byID/']),exist_ok=True)
 [features, batch_ID] = load_data.load_data(params['analysis_path'],params['preds_path'],params['batch_name'],subsample=30)
 
 ## Looping through the condensed feature set and embedding in batches
@@ -28,6 +27,10 @@ for embedding_method in params['embedding_method']:
     filename = ''.join([plot_folder, embedding_method, '_byID_'])
     for batch in np.unique(batch_ID):
         features_ID = features[np.where(batch_ID == batch)[0],:]
+
+        print("Size of video")
+        print(np.shape(features_ID))
+
         n = np.shape(features_ID)[0]
 
         if embedding_method == 'tsne':
@@ -71,14 +74,20 @@ for embedding_method in params['embedding_method']:
             embedding = umap_transform.fit_transform(features_ID)
             embed_scatter(embedding, filename=''.join([filename, str(batch)]))
 
-        watershed_map, data_by_cluster = clustering(embedding, filename=''.join([filename, str(batch)]))
-        sampled_points, idx = sample_clusters(features_ID, data_by_cluster, size=50)
+        watershed_map, data_by_cluster, _ = clustering(embedding, filename=''.join([filename, str(batch)]))
+        sampled_points, idx = sample_clusters(features_ID, data_by_cluster, size=20)
+        idx = np.nonzero(batch_ID==batch)[0][idx]
         template = np.append(template, sampled_points, axis=0)
-        template_idx += idx
+        template_idx += list(idx)
 
     print("Total Time: ", time.time()-start)
-    print(type(template_idx[0]))
-    reembedding = reembed(template, template_idx, features, method=embedding_method, plot_folder=plot_folder)
+    final_embedding, temp_embedding = reembed(template, template_idx, features, method=embedding_method, plot_folder=plot_folder)
+
+    for batch in np.unique(batch_ID):
+        embed_scatter(final_embedding, filename =''.join([plot_folder,'byID/','final_',str(batch)]), colorby=np.where(batch_ID==batch,1,0))
+        embed_scatter(temp_embedding, filename =''.join([plot_folder,'byID/','temp_',str(batch)]), colorby=np.where(batch_ID[template_idx]==batch,1,0))
+
+    # import pdb; pdb.set_trace()
 
 
 
