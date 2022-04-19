@@ -12,10 +12,18 @@ class KNNEmbed:
         self.index.add(np.ascontiguousarray(X,dtype=np.float32))
         self.y = np.ascontiguousarray(y,dtype=np.float32)
 
-    def predict(self, X):
+    def predict(self, X, weights='standard'):
         print("Predicting")
         distances, indices = self.index.search(np.ascontiguousarray(X,dtype=np.float32), k=self.k)
         votes = self.y[indices]
-        predictions = np.mean(votes, axis=1)
+
+        if weights=='distance':
+            weights = (1/distances)
+            weights = weights/np.sum(weights)
+            print(np.sum(weights))
+        else:
+            weights = 1/self.k
+
+        predictions = np.sum(votes*weights, axis=1)
         # predictions = np.array([np.argmax(np.bincount(x)) for x in votes])
         return predictions
