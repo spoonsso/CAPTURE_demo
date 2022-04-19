@@ -72,7 +72,7 @@ for embedding_method in params['embedding_method']:
             embed_scatter(embedding, filename=''.join([filename, str(batch)]))
 
         watershed_map, data_by_cluster = clustering(embedding, filename=''.join([filename, str(batch)]))
-        sampled_points, idx = sample_clusters(features_ID, data_by_cluster, size=50)
+        sampled_points, idx = sample_clusters(features_ID, data_by_cluster, size=20)
         template = np.append(template, sampled_points, axis=0)
         template_idx += idx
 
