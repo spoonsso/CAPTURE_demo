@@ -105,13 +105,13 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
         start = time.time()
         reembedder = KNNEmbed(k=5)
         reembedder.fit(template,temp_embedding)
-        final_embedding = reembedder.predict(full_data)
+        final_embedding = reembedder.predict(full_data,weights='distance')
         print("Total Time ReEmbedding: ", time.time()-start)
 
         filename = ''.join([plot_folder, 'tsne_cuda_final'])
         embed_scatter(final_embedding, filename=filename)
         _, _, density_map = clustering(final_embedding, filename, sigma=50, bins_per_edge=5000)
-        save_file = {'template':template, 'template_embedding': temp_embedding, 'template_idx': template_idx, 'final_density_map': density_map}
+        save_file = {'template':template, 'template_embedding': temp_embedding, 'template_idx': np.array(template_idx), 'final_density_map': density_map}
         import hdf5storage
         hdf5storage.savemat(''.join([plot_folder,'results.mat']), save_file)
         print("Saving to ", ''.join([plot_folder,'results.mat']))
