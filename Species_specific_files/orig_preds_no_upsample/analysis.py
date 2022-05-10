@@ -1,7 +1,6 @@
 import tsnecuda as tc
 # import h5py
 import numpy as np
-from tqdm import tqdm
 import hdf5storage
 import time
 import sys
@@ -18,27 +17,27 @@ plot_folder = './initial_tadross_analysis/'
 # predictions_file_path = './predictions.mat'
 # id_name = 'animalID'
 
-analysis_file_path = '../combined_tadross_full/fixed/analysisstruct_notsne_2.mat'
-predictions_file_path = '/hpc/group/tdunn/st3dio/analysis/PDb/merged_predictions.mat'
+analysis_file_path = '../../CAPTURE_data/full_tadross_data/anstruct_notsne_fromlocal.mat'
+predictions_file_path = '../../CAPTURE_data/full_tadross_data/merged_predictions.mat'
 id_name = 'recordingID'
 
 analysisstruct = hdf5storage.loadmat(analysis_file_path, variable_names=['jt_features','frames_with_good_tracking'])
 animal_ID = np.squeeze(hdf5storage.loadmat(predictions_file_path, variable_names=[id_name])[id_name].astype(int))
-features = analysisstruct['jt_features']
-print(analysisstruct['frames_with_good_tracking'][0][0])
+features_full = analysisstruct['jt_features']
 frames_with_good_tracking = np.squeeze(analysisstruct['frames_with_good_tracking'][0][0].astype(int))
 
 animal_IDs_good_tracking = animal_ID[frames_with_good_tracking] # Indexing out animal IDs
 
 # Subsample by 30
-features = features[::30]
+features = features_full[::30]
 animal_IDs_good_tracking = animal_IDs_good_tracking[::30]
 
 ## Looping through the condensed feature set and embedding in batches
 start = time.time()
 template = np.empty((0,np.shape(features)[1]))
 template_idx = []
-for animal in [1,2,3]:#np.unique(animal_IDs_good_tracking):
+for animal in np.unique(animal_IDs_good_tracking):
+    # import pdb; pdb.set_trace()
     features_ID = features[np.where(animal_IDs_good_tracking == animal)[0],:]
     n = np.shape(features_ID)[0]
 
@@ -92,13 +91,13 @@ for animal in [1,2,3]:#np.unique(animal_IDs_good_tracking):
         embed_scatter(embedding, filename=filename)
 
     watershed_map, data_by_cluster = clustering(embedding, filename=filename)
-    sampled_points, idx = sample_clusters(features_ID, data_by_cluster, size=50)
+    sampled_points, idx = sample_clusters(features_ID, data_by_cluster, size=30)
     template = np.append(template, sampled_points, axis=0)
     template_idx += idx
 
 print("Total Time: ", time.time()-start)
 print(type(template_idx[0]))
-reembedding = reembed(template, template_idx, features, method=embedding_method, plot_folder=plot_folder)
+reembedding = reembed(template, template_idx, features_full, method=embedding_method, plot_folder=plot_folder)
 
 
 

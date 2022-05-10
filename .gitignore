@@ -10,6 +10,7 @@ Desktop.ini
 $RECYCLE.BIN/
 
 ./CAPTURE_analysis/
+./CAPTURE_data/
 
 *.mat
 *.sh
@@ -19,7 +20,11 @@ $RECYCLE.BIN/
 *.msi
 *.msm
 *.msp
+*.csv
+*.txt
+*.mat
 
+*.mp4
 *.png
 *.pyc
 */__pycache__/

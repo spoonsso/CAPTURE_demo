@@ -41,7 +41,7 @@ def clustering(data, filename):
     # ax.set_aspect('auto')
     # plt.savefig(''.join([filename,'_2dhist.png']))
 
-    gauss_filt_hist = gaussian_filter(hist, sigma=(x_range+y_range)/30)
+    gauss_filt_hist = gaussian_filter(hist, sigma=min(x_range,y_range)/5)
     f = plt.figure()
     ax = f.add_subplot(111)
     ax.imshow(gauss_filt_hist)
@@ -49,7 +49,7 @@ def clustering(data, filename):
     plt.savefig(''.join([filename,'_2dhist_gauss.png']))
     plt.close()
 
-    watershed_map = watershed(-gauss_filt_hist,connectivity=8, watershed_line=True)
+    watershed_map = watershed(-gauss_filt_hist,watershed_line=True)
     watershed_borders = np.where(watershed_map==0,1,0)
     f = plt.figure()
     ax = f.add_subplot(111)
@@ -62,7 +62,7 @@ def clustering(data, filename):
 
     return watershed_map, data_by_cluster
 
-def sample_clusters(data, data_by_cluster, size=30):
+def sample_clusters(data, data_by_cluster, size=10):
     data = np.append(data,np.expand_dims(np.arange(np.shape(data)[0]),axis=1),axis=1)
     sampled_points = np.empty((0,np.shape(data)[1]))
     for cluster_id in np.unique(data_by_cluster):
@@ -89,15 +89,25 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
         embed_scatter(temp_embedding, filename=filename)
 
         print("Embedding full dataset onto template")
-        from sklearn.neighbors import KNeighborsRegressor
 
-        reembedder = KNeighborsRegressor(n_neighbors=5,n_jobs=12)
+        # from sklearn.neighbors import NearestNeighbors
+        # reembedder = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', n_jobs=20)
+        # start = time.time()
+        # reembedder.fit(full_data[template_idx,:])
+        # nn_idx = reembedder.kneighbors(full_data, return_distance=False)
+        # final_embedding = np.mean(full_data[template_idx,:][nn_idx,:],axis=1)
+        # print("Total Time nearest neighbors: ", time.time()-start)
+
+
+        from sklearn.neighbors import KNeighborsRegressor
+        reembedder = KNeighborsRegressor(n_neighbors=5,n_jobs=4)
         start = time.time()
-        reembedder.fit(full_data[template_idx,:],temp_embedding)
-        print("Total Time: ", time.time()-start)
-        start = time.time()
+        reembedder.fit(template,temp_embedding)
         final_embedding = reembedder.predict(full_data)
-        print("Total Time: ", time.time()-start)
+        print("Total Time regressor: ", time.time()-start)
+        final_data = {'template':template, 'final_embedding':final_embedding, }
+        import pickle5 as pickle
+        pickle.dumps({'final_embedding':final_embedding,'template_embedding':temp_embedding})
 
         filename = ''.join([plot_folder, 'tsne_cuda_final'])
         embed_scatter(final_embedding, filename=filename)
