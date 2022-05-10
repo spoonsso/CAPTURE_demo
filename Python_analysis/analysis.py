@@ -83,9 +83,9 @@ for embedding_method in params['embedding_method']:
     print("Total Time: ", time.time()-start)
     final_embedding, temp_embedding = reembed(template, template_idx, features, method=embedding_method, plot_folder=plot_folder)
 
-    for batch in np.unique(batch_ID):
-        embed_scatter(final_embedding, filename =''.join([plot_folder,'byID/','final_',str(batch)]), colorby=np.where(batch_ID==batch,1,0))
-        embed_scatter(temp_embedding, filename =''.join([plot_folder,'byID/','temp_',str(batch)]), colorby=np.where(batch_ID[template_idx]==batch,1,0))
+    # for batch in np.unique(batch_ID):
+    #     embed_scatter(final_embedding, filename =''.join([plot_folder,'byID/','final_',str(batch)]), colorby=np.where(batch_ID==batch,1,0))
+    #     embed_scatter(temp_embedding, filename =''.join([plot_folder,'byID/','temp_',str(batch)]), colorby=np.where(batch_ID[template_idx]==batch,1,0))
 
     # import pdb; pdb.set_trace()
 

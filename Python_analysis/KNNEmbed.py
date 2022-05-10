@@ -21,7 +21,7 @@ class KNNEmbed:
             min_dist = np.min(distances[np.nonzero(distances)])/2
             distances = np.clip(distances, min_dist, None)
             weights = 1/distances
-            weights = weights/np.repeat(np.expand_dims(np.sum(weights, axis=1), axis=1), 5, axis=1)
+            weights = weights/np.repeat(np.expand_dims(np.sum(weights, axis=1), axis=1), self.k, axis=1)
         else:
             weights = 1/self.k
 

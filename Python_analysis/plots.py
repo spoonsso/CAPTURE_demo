@@ -15,6 +15,8 @@ def embed_scatter(data,
         color = None
     plt.scatter(data[:,0], data[:,1], marker='.', s=3, linewidths=0,
                 c=color,cmap='viridis_r', alpha=0.75)
+    plt.xlabel('tSNE 1')
+    plt.ylabel('tSNE 2')
     if colorby is not None:
         plt.colorbar()
     if save:
@@ -37,7 +39,7 @@ def clustering(data, filename=None, bins_per_edge=1000, sigma = 15, max_clip=0.7
     if filename is not None:
         f = plt.figure()
         ax = f.add_subplot(111)
-        ax.imshow(gauss_filt_hist)
+        ax.imshow(np.log1p(gauss_filt_hist))
         ax.set_aspect('auto')
         plt.savefig(''.join([filename,'_2dhist_gauss.png']),dpi=400)
         plt.close()
@@ -154,7 +156,7 @@ def map_density(data, bins_per_edge=1000, sigma=15, max_clip=0.75, x_range=None,
         y_bin_idx[i] = np.argmax(xedges>data[i,0])-1
         x_bin_idx[i] = bins_per_edge-np.argmax(yedges>data[i,1])
 
-    gauss_filt_hist = np.log1p(gaussian_filter(hist, sigma=sigma))
+    gauss_filt_hist = gaussian_filter(hist, sigma=sigma)
     gauss_filt_hist = np.clip(gauss_filt_hist, None, np.amax(gauss_filt_hist)*max_clip)
     
     return gauss_filt_hist, x_bin_idx, y_bin_idx

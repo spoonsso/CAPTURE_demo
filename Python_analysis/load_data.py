@@ -38,6 +38,7 @@ def load_data(analysis_path, preds_path, batch_name, subsample=30):
         batch_ID - List of labels for categories based on the batch_name
     '''
     import hdf5storage
+    # import pdb; pdb.set_trace()
     analysisstruct = hdf5storage.loadmat(analysis_path, variable_names=['jt_features','frames_with_good_tracking'])
     batch_IDs_full = np.squeeze(hdf5storage.loadmat(preds_path, variable_names=[batch_name])[batch_name].astype(int))
     features = analysisstruct['jt_features']
