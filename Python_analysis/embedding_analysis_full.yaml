@@ -1,14 +1,14 @@
 # File path of analysis struct with jt_features
-analysis_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/full_tadross_data/final_anstruct.mat'
+analysis_path: '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/combined_tadross_full/fixed/analysisstruct_notsne.mat'
 
 # File path of predictions file
-preds_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/full_tadross_data/merged_predictions.mat'
+preds_path: '/hpc/group/tdunn/st3dio/analysis/PDb/merged_predictions.mat'
 
 # File path of metadata file
 meta_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/full_tadross_data/metadata.csv'
 
 # Output folder of all plots
-out_folder: './cleaned_full_analysis/'
+out_folder: './cluster_delete_15_sigma/'
 
 # embedding method (tsne, tsne_split, tsne_cuda, umap)
 embedding_method: ['tsne_cuda']

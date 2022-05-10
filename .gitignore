@@ -25,6 +25,7 @@ $RECYCLE.BIN/
 *.mat
 
 *.mp4
+*.yaml
 *.png
 *.pyc
 */__pycache__/

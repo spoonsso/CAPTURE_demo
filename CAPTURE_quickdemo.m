@@ -1,7 +1,7 @@
 
 
 
-function [analysisstruct,hierarchystruct] =  CAPTURE_quickdemo(inputfile,ratnames,coefficientfilename,linkname,overwrite_coefficient,tsne_type)
+function [analysisstruct,hierarchystruct] =  CAPTURE_quickdemo(inputfile,ratnames,coefficientfilename,linkname,overwrite_coefficient,tsne_type,savedirectory)
 % File to generate tsne features and run reembedding on a mouse
 %      inputfile: a .mat file that contains a preprocessed dannce struct
 %                 (see preprocess_dannce)
@@ -107,28 +107,29 @@ clear MLmatobj
 disp("whos post jtfeatures")
 whos
 [status,cmdout] = system('free -h','-echo');
-savedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/combined_tadross_full/fixed/';
-save(strcat(savedirectory,filesep,'analysisstruct_notsne_2.mat'),'-struct','analysisstruct',...
+% savedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/combined_tadross_full/fixed/';
+save(strcat(savedirectory,filesep,'anstruct_restinc_bonus_feat.mat'),'-struct','analysisstruct',...
     '-v7.3')
-
-if tsne_type=='old'
-    %%% Old tsne
-    tic
-    zvals = tsne(analysisstruct.jt_features);
-    toc
-elseif tsne_type=='gpu'
-    %%% GPU tSNE
-    pyenv;
-    np = py.importlib.import_module("numpy");
-    py.importlib.import_module("tsne_gpu");
-    features_np = py.numpy.array(analysisstruct.jt_features(:).');
-    features_np = features_np.reshape(py.int(size(analysisstruct.jt_features,1)), py.int(size(analysisstruct.jt_features,2)));
-    % tic
-    zvals = double(py.tsne_gpu.tsne_gpu(features_np));
-    % toc
-else
-    zvals = 0
-end
+disp(size(analysisstruct.jt_features))
+% if tsne_type=='old'
+%     %%% Old tsne
+%     tic
+%     zvals = tsne(analysisstruct.jt_features);
+%     toc
+% elseif tsne_type=='gpu'
+%     %%% GPU tSNE
+%     pyenv;
+%     np = py.importlib.import_module("numpy");
+%     py.importlib.import_module("tsne_gpu");
+%     features_np = py.numpy.array(analysisstruct.jt_features(:).');
+%     features_np = features_np.reshape(py.int(size(analysisstruct.jt_features,1)), py.int(size(analysisstruct.jt_features,2)));
+%     % tic
+%     zvals = double(py.tsne_gpu.tsne_gpu(features_np));
+%     % toc
+% else
+%     zvals = 0
+% end
+zvals=0
 
 % save('tsne_embeddings.mat','zvals','zvals_gpu')
 % zvals_gpu_size = size(zvals_gpu)
@@ -147,7 +148,7 @@ analysisstruct.matchedconds = {[unique(analysisstruct.condition_inds)]}; %if run
 analysisstruct.conditions_to_run = [unique(analysisstruct.condition_inds)];
 analysisstruct.tsnegranularity = analysisparams.tsnegranularity;
 params.reorder=1;
-analysisstruct = compute_analysis_clusters_demo(analysisstruct,params);
+% analysisstruct = compute_analysis_clusters_demo(analysisstruct,params);
 
 %% behavior plots and movies
 analysisstruct.conditionnames = ratname;
@@ -164,7 +165,7 @@ params.sorted = 1;
 params.markersize = 1;
 params.coarseboundary =0;
 params.do_coarse = 0;
-plot_clustercolored_tsne(analysisstruct,1,params.watershed,h1,params)
+% plot_clustercolored_tsne(analysisstruct,1,params.watershed,h1,params)
 set(gcf,'Position',([100 100 1100 1100]))
 
 
@@ -174,15 +175,18 @@ axisparams.xlim = ([-400 400]);
 axisparams.ylim = ([-400 400]);
 figure(370);
 clf;
-animate_markers_nonaligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
-    find(analysisstruct.annot_reordered{end}==10),[],axisparams);
-animate_markers_aligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
-    find(analysisstruct.annot_reordered{end}==59));
+% animate_markers_nonaligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
+%     find(analysisstruct.annot_reordered{end}==10),[],axisparams);
+% animate_markers_aligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
+%     find(analysisstruct.annot_reordered{end}==59));
 
 %% or use extnded set of 140 features
 if strcmp(ratname,'myrat')
 MLmatobj_extra = create_extra_behavioral_features(mocapstruct,'myrat',savefilename,overwrite_coefficient,directory_here);
 jt_features_extra = load_extra_tsne_features(mocapstruct,MLmatobj_extra,analysisparams);
+
+save(strcat(savedirectory,filesep,'jt_features_extra.mat'),'-struct','jt_features_extra',...
+    '-v7.3')
 
 % look at tsne of these added features
 zvals_extra = tsne(jt_features_extra);

@@ -17,7 +17,7 @@ print(params)
 
 plot_folder = params['out_folder']
 os.makedirs(''.join([plot_folder,'byID/']),exist_ok=True)
-[features, batch_ID] = load_data.load_data(params['analysis_path'],params['preds_path'],params['batch_name'],subsample=20)
+[features, batch_ID] = load_data.load_data(params['analysis_path'],params['preds_path'],params['batch_name'],subsample=15)
 
 ## Looping through the condensed feature set and embedding in batches
 for embedding_method in params['embedding_method']:
@@ -47,7 +47,7 @@ for embedding_method in params['embedding_method']:
 
             for i in range(split_factor):
                 if i == split_factor-1:
-                    split_features = features_ID[i*math.floor(n/split_factor):end,:]
+                    split_features = features_ID[i*math.floor(n/split_factor):,:]
                     print(np.shape(split_features))
                 else:
                     split_features = features_ID[i*math.floor(n/split_factor):(i+1)*math.floor(n/split_factor),:]
