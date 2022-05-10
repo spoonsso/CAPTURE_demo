@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from skimage.segmentation import watershed
+from skimage import measure
 import numpy as np
 
 def embed_scatter(data, 
@@ -14,50 +15,49 @@ def embed_scatter(data,
         color = None
     plt.scatter(data[:,0], data[:,1], marker='.', s=3, linewidths=0,
                 c=color,cmap='viridis_r', alpha=0.75)
+    plt.xlabel('tSNE 1')
+    plt.ylabel('tSNE 2')
     if colorby is not None:
         plt.colorbar()
     if save:
         plt.savefig(''.join([filename,'.png']),dpi=400)
     plt.close()
 
-def clustering(data, filename, bins_per_edge=1000, sigma = 15):
-    x_range = int(np.ceil(np.amax(data[:,0])) - np.floor(np.amin(data[:,0])))
-    y_range = int(np.ceil(np.amax(data[:,1])) - np.floor(np.amin(data[:,1])))
-    hist,xedges,yedges = np.histogram2d(data[:,0], data[:,1], bins=[bins_per_edge, bins_per_edge],
-                          range=[[int(np.floor(np.amin(data[:,0]))-x_range/40),int(np.ceil(np.amax(data[:,0]))+x_range/40)],
-                                 [int(np.floor(np.amin(data[:,1]))-y_range/40),int(np.ceil(np.amax(data[:,1]))+y_range/40)]],
-                          density=False)
-    hist = np.rot90(hist)
-
-    assert xedges[0]<xedges[-1] and yedges[0]<yedges[1]
-
-    x_bin_idx = np.zeros(np.shape(data[:,0]))
-    y_bin_idx = np.zeros(np.shape(data[:,1]))
-    for i in range(len(x_bin_idx)):
-        x_bin_idx[i] = 1001-np.argmax(xedges>data[i,0])
-        y_bin_idx[i] = 1001-np.argmax(yedges>data[i,1])
-
-    gauss_filt_hist = gaussian_filter(hist, sigma=sigma)
-    f = plt.figure()
-    ax = f.add_subplot(111)
-    ax.imshow(gauss_filt_hist)
-    ax.set_aspect('auto')
-    plt.savefig(''.join([filename,'_2dhist_gauss.png']),dpi=400)
-    plt.close()
+def clustering(data, filename=None, bins_per_edge=1000, sigma = 15, max_clip=0.75):
+    gauss_filt_hist, x_bin_idx, y_bin_idx = map_density(data,bins_per_edge=bins_per_edge,sigma=sigma,max_clip=max_clip)
 
     print("Calculating watershed")
-    watershed_map = watershed(-gauss_filt_hist,connectivity=8, watershed_line=True)
-    watershed_borders = np.where(watershed_map==0,1,0)
-    f = plt.figure()
-    ax = f.add_subplot(111)
-    ax.imshow(watershed_borders, cmap='gray_r')
-    ax.set_aspect('auto')
-    plt.savefig(''.join([filename,'_watershed.png']),dpi=400)
-    plt.close()
-    data_by_cluster = watershed_map[x_bin_idx.astype(int),y_bin_idx.astype(int)]
-    print(str(int(np.amax(data_by_cluster))),"clusters detected")
+    density_thresh = 1e-5
+    watershed_map = watershed(-gauss_filt_hist,
+                              mask=gauss_filt_hist>density_thresh,
+                              watershed_line=False)
+    watershed_borders = np.empty((0,2))
+    for i in range(1, len(np.unique(watershed_map))):
+        contour = measure.find_contours(watershed_map.T==i, 0.5)[0]
+        watershed_borders = np.append(watershed_borders, contour,axis=0)
+    
+    if filename is not None:
+        f = plt.figure()
+        ax = f.add_subplot(111)
+        ax.imshow(np.log1p(gauss_filt_hist))
+        ax.set_aspect('auto')
+        plt.savefig(''.join([filename,'_2dhist_gauss.png']),dpi=400)
+        plt.close()
 
-    return watershed_map, data_by_cluster, gauss_filt_hist
+        f = plt.figure()
+        ax = f.add_subplot(111)
+        ax.imshow(watershed_map)
+        ax.set_aspect('auto')
+        ax.plot(watershed_borders[:,0],watershed_borders[:,1],'.r',markersize=0.05)
+        plt.savefig(''.join([filename,'_watershed.png']),dpi=400)
+        plt.close()
+    # import pdb; pdb.set_trace()
+    data_by_cluster = watershed_map[x_bin_idx.astype(int),y_bin_idx.astype(int)]
+    print(str(int(np.amax(data_by_cluster)+1)),"clusters detected")
+    print(str(np.unique(data_by_cluster).shape),"unique clusters detected")
+    print(np.unique(data_by_cluster))
+
+    return watershed_map, watershed_borders, data_by_cluster, gauss_filt_hist
 
 def sample_clusters(data, data_by_cluster, size=20):
     '''
@@ -77,8 +77,9 @@ def sample_clusters(data, data_by_cluster, size=20):
         if len(points)==0:
             continue
         elif len(points)<size:
-            sampled_idx = np.random.choice(np.arange(len(points)), size=size, replace=True)
-            sampled_points = np.append(sampled_points, points[sampled_idx,:], axis=0)
+            continue
+            # sampled_idx = np.random.choice(np.arange(len(points)), size=size, replace=True)
+            # sampled_points = np.append(sampled_points, points[sampled_idx,:], axis=0)
         else:
             num_points = min(len(points),size)
             sampled_points = np.append(sampled_points, 
@@ -94,7 +95,7 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
     if method == 'tsne_cuda':
         n = np.shape(template)[0]
         import tsnecuda as tc
-        tsne = tc.TSNE(n_iter=5000, verbose=2, num_neighbors=300, perplexity=int(n/100), learning_rate=int(n/12))
+        tsne = tc.TSNE(n_iter=2500, verbose=2, num_neighbors=300, perplexity=int(n/100), learning_rate=int(n/12))
         temp_embedding = tsne.fit_transform(template)
         filename = ''.join([plot_folder, 'tsne_cuda_template'])
         embed_scatter(temp_embedding, filename=filename)
@@ -105,12 +106,12 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
         start = time.time()
         reembedder = KNNEmbed(k=5)
         reembedder.fit(template,temp_embedding)
-        final_embedding = reembedder.predict(full_data)
+        final_embedding = reembedder.predict(full_data, weights='distance')
         print("Total Time ReEmbedding: ", time.time()-start)
 
         filename = ''.join([plot_folder, 'tsne_cuda_final'])
         embed_scatter(final_embedding, filename=filename)
-        _, _, density_map = clustering(final_embedding, filename, sigma=50, bins_per_edge=5000)
+        _, _, _, density_map = clustering(final_embedding, filename, sigma=50, bins_per_edge=5000)
         save_file = {'template':template, 'template_embedding': temp_embedding, 'template_idx': np.array(template_idx), 'final_density_map': density_map}
         import hdf5storage
         hdf5storage.savemat(''.join([plot_folder,'results.mat']), save_file)
@@ -130,3 +131,49 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
         clustering(final_embedding, filename)
 
     return final_embedding, temp_embedding
+
+def map_density(data, bins_per_edge=1000, sigma=15, max_clip=0.75, x_range=None, y_range=None, hist_range=None):
+    if x_range is None:
+        x_range = int(np.ceil(np.amax(data[:,0])) - np.floor(np.amin(data[:,0])))
+
+    if y_range is None:
+        y_range = int(np.ceil(np.amax(data[:,1])) - np.floor(np.amin(data[:,1])))
+
+    if hist_range is None:
+        hist_range = [[int(np.floor(np.amin(data[:,0]))-x_range/40),int(np.ceil(np.amax(data[:,0]))+x_range/40)],
+                      [int(np.floor(np.amin(data[:,1]))-y_range/40),int(np.ceil(np.amax(data[:,1]))+y_range/40)]]
+    
+    hist,xedges,yedges = np.histogram2d(data[:,0], data[:,1], bins=[bins_per_edge, bins_per_edge],
+                          range=hist_range,
+                          density=False)
+    hist = np.rot90(hist)
+
+    assert xedges[0]<xedges[-1] and yedges[0]<yedges[1]
+
+    x_bin_idx = np.zeros(np.shape(data[:,0]))
+    y_bin_idx = np.zeros(np.shape(data[:,1]))
+    for i in range(len(x_bin_idx)):
+        y_bin_idx[i] = np.argmax(xedges>data[i,0])-1
+        x_bin_idx[i] = bins_per_edge-np.argmax(yedges>data[i,1])
+
+    gauss_filt_hist = gaussian_filter(hist, sigma=sigma)
+    gauss_filt_hist = np.clip(gauss_filt_hist, None, np.amax(gauss_filt_hist)*max_clip)
+    
+    return gauss_filt_hist, x_bin_idx, y_bin_idx
+
+
+def cluster_frequencies(data_by_cluster, batch_ID):
+    '''
+        batch_ID: list of metadata label for each element in data_by_cluster
+    '''
+
+    num_batches = len(set(batch_ID))
+    cluster_freqs = np.zeros((num_batches, np.max(data_by_cluster)+1))
+    for i, batch in enumerate(set(batch_ID)):
+        cluster_by_ID = data_by_cluster[batch_ID==batch]
+        cluster_freqs[i,:] = np.histogram(cluster_by_ID, bins=range(-1, np.max(data_by_cluster)+1))[0]
+
+    frame_totals = np.sum(cluster_freqs,axis=1)
+    cluster_freqs = cluster_freqs/np.expand_dims(frame_totals,axis=1) #Fraction of total
+
+    return cluster_freqs

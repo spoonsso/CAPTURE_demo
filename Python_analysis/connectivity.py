@@ -101,3 +101,28 @@ COLOR_DICT = {
     (0,    1.0000,         0,    0.5000),
     ]
 }
+
+JOINT_NAME_DICT = {
+    "mouse20": [
+        'Snout',
+        'EarR',
+        'EarL',
+        'SpineF',
+        'SpineM',
+        'Tail_base_',
+        'Tail_mid_',
+        'Tail_end_',
+        'Forepaw_R',
+        'Wrist_R',
+        'ForeLimb_R',
+        'Forepaw_L',
+        'Wrist_L',
+        'Forelimb_L',
+        'Hindpaw_R',
+        'Ankel_R',
+        'Hindlimb_R',
+        'Hindpaw_L',
+        'Ankel_L',
+        'Hindlimb_L'
+    ]
+}
