@@ -99,8 +99,8 @@ preprocessing_parameters.bad_frame_surround_number = 1;
 preprocessing_parameters.interpolation_max_length = 5;
 preprocessing_parameters.meanvelocity_lowpass = 60;
 preprocessing_parameters.meanvelocity_lowpass = 60;
-preprocessing_parameters.fastvelocity_threshold = 0.01;% 0.1;
-preprocessing_parameters.moving_threshold = 0.00001;%0.015;
+preprocessing_parameters.fastvelocity_threshold = input_params.fastvelocity_threshold;%0.01;% 0.1;
+preprocessing_parameters.moving_threshold = input_params.moving_threshold;%0.00001;%0.015;
 preprocessing_parameters.moving_framewindow = 600*(input_params.fps/300); % was originally 600, and changed to 180
 
 % the difference in framerate between the video and the canonical motion capture

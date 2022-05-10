@@ -18,12 +18,13 @@ class KNNEmbed:
         votes = self.y[indices]
 
         if weights=='distance':
-            weights = (1/distances)
-            weights = weights/np.sum(weights)
-            print(np.sum(weights))
+            min_dist = np.min(distances[np.nonzero(distances)])/2
+            distances = np.clip(distances, min_dist, None)
+            weights = 1/distances
+            weights = weights/np.repeat(np.expand_dims(np.sum(weights, axis=1), axis=1), 5, axis=1)
         else:
             weights = 1/self.k
 
+        weights = np.repeat(np.expand_dims(weights, axis=2), 2, axis=2)
         predictions = np.sum(votes*weights, axis=1)
-        # predictions = np.array([np.argmax(np.bincount(x)) for x in votes])
         return predictions

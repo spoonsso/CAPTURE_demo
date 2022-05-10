@@ -5,7 +5,7 @@ analysis_path: '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/comb
 preds_path: '/hpc/group/tdunn/st3dio/analysis/PDb/merged_predictions.mat'
 
 # Output folder of all plots
-out_folder: './initial_tadross_analysis/'
+out_folder: './cluster_delete_15_sigma/'
 
 # embedding method (tsne, tsne_split, tsne_cuda, umap)
 embedding_method: ['tsne_cuda']
