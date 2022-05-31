@@ -1,0 +1,280 @@
+import os
+import numpy as np
+import scipy.io as sio
+import imageio
+import tqdm
+from DataStruct import connectivity
+import hdf5storage
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.animation import FFMpegWriter
+from typing import Optional, Union, List
+
+# from FeatureData import FeatureData
+
+palette = [(1,0.5,0),(0.5,0.5,0.85),(0,1,0),(1,0,0),(0,0,0.9),(0,1,1),
+           (0.4,0.4,0.4),(0.5,0.85,0.5),(0.5,0.15,0.5),
+           (0.15,0.5,0.5),(0.5,0.5,0.15),(0.9,0.9,0),(1,0,1),
+           (0,0.5,1),(0.85,0.5,0.5),(0.5,1,0),(0.5,0,1),(1,0,0.5),(0,0.9,0.6),
+           (0.3,0.6,0),(0,0.3,0.6),(0.6,0.3,0),(0.3,0,0.6),(0,0.6,0.3),(0.6,0,0.3)]
+
+# def scatter(data: Union[np.array,FeatureData],
+#             color: Optional[Union[List,np.array]] = None,
+#             marker_size: int = 3,
+#             **kwargs):
+#     '''
+#     Draw a 2d tSNE plot from zValues.
+
+#     input: zValues dataframe, [num of points x 2]
+#     output: a scatter plot
+#     '''
+    
+#     if isinstance(data, FeatureData):
+#         x = data.embed_vals[:,0]
+#         y = data.embed_vals[:,1]
+#     elif isinstance(data, np.array):
+#         any(np.shape(data)==2)
+#         x = data[:,0]
+#         y = data[:,1]
+#     else:
+
+
+#     plt.figure(figsize=[12,10])
+#     unique_animalID = np.unique(df_tSNE['animalID'])
+#     for lbl in unique_animalID:
+#         plt.scatter(x=df_tSNE['x'][df_tSNE['animalID'] == lbl], 
+#                     y=df_tSNE['y'][df_tSNE['animalID'] == lbl], 
+#                     c=color, label=lbl, s=marker_size, **kwargs)
+#     plt.legend()
+#     plt.xlabel('t-SNE1')
+#     plt.ylabel('t-SNE2')
+#     plt.show()
+
+
+# def draw_tSNE_interactive(self, df_tSNE, color='animalID', marker_size=3):
+#     '''
+#     Draw an interactive 2d tSNE plot from zValues.
+
+#     input: zValues dataframe, [num of points x 2]
+#     output: a scatter plot
+#     '''
+#     unique_animalID = np.unique(df_tSNE['animalID'])
+#     fig = px.scatter(df_tSNE, x='x', y='y', color=color, hover_data=['idx', 'x', 'y'], width=800, height=800)
+#     fig.update_traces(marker_size=marker_size)
+#     fig.show()
+
+# def draw_3d_skeleton(self, selected_anchor_idx):
+#     '''
+#     input: an index of predictions 3d coordinates
+#     output: a skeleton scatter3d plot of that index
+#     '''
+#     selected_anchor_idx = int(selected_anchor_idx)
+#     temp_list = []
+#     anchors = list(predictions_dict['predictions'][0][0])[:-1] # 'Tail_base_' etc. excluding last matrix 'sampleID'
+#     for i in range(len(anchors)): 
+#         temp_list.append(anchors[i][selected_anchor_idx])
+#     plt.figure()
+#     ax = plt.axes(projection="3d")
+#     for x, y, z in temp_list:
+#         ax.scatter3D(x, y, z)
+#     skeleton_color, colors = None, self.left_or_right_colormap_dict['color'].tolist()
+#     for i, (first, second) in enumerate(self.left_or_right_colormap_dict['joints_idx']):
+#         xx = [anchors[first-1][selected_anchor_idx][0], anchors[second-1][selected_anchor_idx][0]]
+#         yy = [anchors[first-1][selected_anchor_idx][1], anchors[second-1][selected_anchor_idx][1]]
+#         zz = [anchors[first-1][selected_anchor_idx][2], anchors[second-1][selected_anchor_idx][2]]
+#         if colors[i] == [1, 0, 0]:
+#             skeleton_color = 'r' 
+#         elif colors[i] == [0, 1, 0]:
+#             skeleton_color = 'g'
+#         else:
+#             skeleton_color = 'b'
+#         ax.plot(xx, yy, zz, c=skeleton_color)
+#     plt.show()
+
+# def draw_3d_skeleton_interactive(self, selected_anchor_idx, marker_size=3):
+#     '''
+#     input: an index of predictions 3d coordinates
+#     output: a skeleton scatter3d plot of that index
+#     '''
+#     selected_anchor_idx = int(selected_anchor_idx)
+#     temp_list = []
+#     anchors = list(predictions_dict['predictions'][0][0])[:-1] # 'Tail_base_' etc. excluding last matrix 'sampleID'
+#     for i in range(len(anchors)): 
+#       temp_list.append(anchors[i][selected_anchor_idx])
+#     df_temp = pd.DataFrame(temp_list)
+#     print(df_temp.head())
+#     fig = px.scatter_3d(temp_list, x=0, y=1, z=2)
+#     skeleton_color, colors = None, self.left_or_right_colormap_dict['color'].tolist()
+#     fig = go.Figure()
+#     for i, (first, second) in enumerate(self.left_or_right_colormap_dict['joints_idx']):
+#         xx = [anchors[first-1][selected_anchor_idx][0], anchors[second-1][selected_anchor_idx][0]]
+#         yy = [anchors[first-1][selected_anchor_idx][1], anchors[second-1][selected_anchor_idx][1]]
+#         zz = [anchors[first-1][selected_anchor_idx][2], anchors[second-1][selected_anchor_idx][2]]
+#         name = self.left_or_right_colormap_dict['joint_names'][0][first-1].tolist()[0]+'-'\
+#                 + self.left_or_right_colormap_dict['joint_names'][0][second-1].tolist()[0]
+#         if colors[i] == [1, 0, 0]:
+#             skeleton_color = 'r' 
+#         elif colors[i] == [0, 1, 0]:
+#             skeleton_color = 'g'
+#         else:
+#             skeleton_color = 'b'
+#         fig.add_scatter3d(x=xx, y=yy, z=zz, name=name)
+#     fig.update_traces(marker_size=marker_size)
+#     fig.show()
+
+# def path_format_switch(self, original_path):
+#     '''
+#     Switches the path from format
+#     '/media/twd/dannce-pd/PDBmirror/2021-07-04-PDb1_0-dopa'
+#     to
+#     '/hpc/group/tdunn/pdb_data/videos/2021_04_07/PDb1_R1_0/videos/'
+#     '''
+#     year, day, month, pdb, _ = original_path.split('/')[5].split('-')
+#     pdb1, pdb2 = pdb[3], pdb[5]
+#     converted_path = self.common_path + '/videos/{}_{}_{}/PDb{}_R1_{}/videos'.format(year, month, day, pdb1, pdb2)
+#     return converted_path
+
+# def get_relative_frame_idx(self, overall_idx):
+#     '''
+#     Get the index in a certain video from the overall index. 
+
+#     input: Overall index.
+#     output: frame_number: relative index in a video. v
+#             id_idx: which video is the frame in. 
+#             amount_of_frames: amount of frames per video (assuming each video has same length)
+#     '''
+#     overall_idx = int(overall_idx)
+#     example_video = cv2.VideoCapture(self.videopaths[1])
+#     amount_of_frames = int(example_video.get(cv2.CAP_PROP_FRAME_COUNT))
+#     print('Frames per video:', amount_of_frames)
+#     frame_number = overall_idx % amount_of_frames
+#     vid_idx = overall_idx // amount_of_frames + 1 # find which vid the frame belongs to. E.g., 3 // 324000 + 1 = 0 + 1 = 1. So frame 3 is in 1st video.
+#     print('The requested frame idx {} is in video number {}, at the {}th frame of that video.'.format(overall_idx, vid_idx, frame_number))
+#     return frame_number, vid_idx, amount_of_frames
+
+#   def frame2time(self, overall_idx):
+#     '''
+#     Convert the overall index of a frame (a point in tSNE) to the time stamp (in second).
+
+#     input: overall_idx, the index of the frame in all videos (0-2M)
+#     output: timestamp of the frame in seconds.
+#     '''
+#     frame_number, vid_idx, amount_of_frames = self.get_relative_frame_idx(overall_idx)
+#     return frame_number / amount_of_frames * self.vid_length # the length of vid is 3600s.
+
+#   def get_frame(self, overall_idx):
+#     '''
+#     Get the frame in the set of videos with a given index.
+#     For example, there are 7 videos, each with 324000 frames,
+#     so there are 324000x7=2268000 frames. You can give
+#     overall_idx = 2000001
+
+#     input: overall_idx, the index of the frame in all videos (0-2M)
+#     output: an .jpg image of that frame
+#     '''
+#     print('Starts extracting frame...')
+#     frame_number, vid_idx, amount_of_frames = self.get_relative_frame_idx(overall_idx)
+#     video = cv2.VideoCapture(self.videopaths[vid_idx])
+#     video.set(cv2.CAP_PROP_POS_FRAMES, frame_number-1)
+#     is_success, frame = video.read()
+#     frame = cv2.resize(frame, (500, 500))
+#     cv2_imshow(frame)
+#     if is_success:
+#         image_name = "video{}_frame{}.jpg".format(vid_idx, frame_number)
+#         cv2.imwrite(image_name, frame)
+#         print('Frame successfully extracted as', image_name)
+
+# def generate_video(self, overall_idx, video_length=3000):
+#     '''
+#     Generate a video around the given frame of length video_length (in ms).
+
+#     input: overall frame index，desired video length (e.g., 3000ms)
+#     output: a video fraction
+#     '''
+#     print('Starts generating video...')
+#     frame_number, vid_idx, amount_of_frames = self.get_relative_frame_idx(overall_idx)
+#     timestamp = self.frame2time(overall_idx)
+#     half_length = video_length / 2000 # in seconds
+#     start, end = max(timestamp - half_length, 0), min(timestamp + half_length, self.vid_length)
+#     video_name = "video{}_time{}m{}s.mp4".format(vid_idx, round(timestamp // 60, 2), round(timestamp % 60, 2))
+#     ffmpeg_extract_subclip(anst.videopaths[vid_idx], start, end, targetname=video_name)
+#     print('Video clip {} generated successfully with length of {} secs.'.format(video_name, round(end - start, 2)))
+
+
+
+def skeleton_vid3D(preds,
+                   connectivity,
+                   frames=[3000,100000,5000000], 
+                   N_FRAMES = 250, 
+                   VID_NAME = '0.mp4',
+                   SAVE_ROOT = './test/skeleton_vids/'):
+    ###############################################################################################################
+    START_FRAME = np.array(frames) - int(N_FRAMES/2) + 1
+    COLOR = connectivity.colors*len(frames)
+    JOINTS = connectivity.joint_names
+    links = list(connectivity.links)
+    links_expand = links
+    total_frames = N_FRAMES*len(frames)#max(np.shape(f[list(f.keys())[0]]))
+
+    ## Expanding connectivity for each frame to be visualized
+    num_joints = max(max(links))+1
+    for i in range(len(frames)-1):
+        next_con = [(x+(i+1)*num_joints, y+(i+1)*num_joints) for x,y in links]
+        links_expand=links_expand+next_con
+
+    save_path = os.path.join(SAVE_ROOT)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    # get dannce predictions
+    pose_3d = np.empty((0, num_joints, 3))
+    for start in START_FRAME:
+        pose_3d = np.append(pose_3d, preds[start:start+N_FRAMES,:,:],axis=0)
+
+    # compute 3d grid limits 
+    offset = 50
+    x_lim1, x_lim2 = np.min(pose_3d[:, :, 0])-offset, np.max(pose_3d[:, :, 0])+offset
+    y_lim1, y_lim2 = np.min(pose_3d[:, :, 1])-offset, np.max(pose_3d[:, :, 1])+offset
+    z_lim1, z_lim2 = np.minimum(0, np.min(pose_3d[:, :, 2])), np.max(pose_3d[:, :, 2])+10
+
+    # set up video writer
+    metadata = dict(title='dannce_visualization', artist='Matplotlib')
+    writer = FFMpegWriter(fps=30, metadata=metadata)
+
+    ###############################################################################################################
+    # setup figure
+    fig = plt.figure(figsize=(12, 12))
+
+    ax_3d = fig.add_subplot(1, 1, 1, projection='3d')
+
+    import pdb; pdb.set_trace()
+
+    with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
+        for curr_frame in tqdm.tqdm(range(N_FRAMES)):
+            # grab imgs
+            curr_frames = curr_frame + np.arange(len(frames))*N_FRAMES
+            kpts_3d = np.reshape(pose_3d[curr_frames,:,:], (len(frames)*num_joints, 3))
+            
+            # plot 3d moving skeletons
+            ax_3d.scatter(kpts_3d[:, 0], kpts_3d[:, 1], kpts_3d[:, 2],  marker='.', color='black', linewidths=0.5)
+            for color, (index_from, index_to) in zip(COLOR, links_expand):
+                xs, ys, zs = [np.array([kpts_3d[index_from, j], kpts_3d[index_to, j]]) for j in range(3)] 
+                ax_3d.plot3D(xs, ys, zs, c=color, lw=2)
+
+            ax_3d.set_xlim(x_lim1, x_lim2)
+            ax_3d.set_ylim(y_lim1, y_lim2)
+            ax_3d.set_zlim(z_lim1, z_lim2)
+            ax_3d.set_title("3D Tracking")
+            # ax_3d.set_box_aspect([1,1,1])
+
+            # grab frame and write to vid
+            writer.grab_frame()
+            ax_3d.clear()
+    
+    plt.close()
+    return 0
+
+
+    
