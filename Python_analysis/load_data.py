@@ -42,7 +42,10 @@ def load_data(analysis_path, preds_path, batch_name, subsample=30):
     analysisstruct = hdf5storage.loadmat(analysis_path, variable_names=['jt_features','frames_with_good_tracking'])
     batch_IDs_full = np.squeeze(hdf5storage.loadmat(preds_path, variable_names=[batch_name])[batch_name].astype(int))
     features = analysisstruct['jt_features']
-    frames_with_good_tracking = np.squeeze(analysisstruct['frames_with_good_tracking'][0][0].astype(int))
+    try:
+        frames_with_good_tracking = np.squeeze(analysisstruct['frames_with_good_tracking'][0][0].astype(int))
+    except:
+        frames_with_good_tracking = np.squeeze(analysisstruct['frames_with_good_tracking'][0][1].astype(int))
 
     batch_ID = batch_IDs_full[frames_with_good_tracking] # Indexing out batch IDs
 

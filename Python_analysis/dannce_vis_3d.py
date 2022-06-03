@@ -3,7 +3,7 @@ import numpy as np
 import scipy.io as sio
 import imageio
 import tqdm
-import connectivity
+import CAPTURE_data.skeletons as skeletons
 import hdf5storage
 
 import matplotlib
@@ -11,27 +11,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 
-def load_predictions(PRED_EXP = '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/full_tadross_data/merged_predictions.mat', ):
-    pred_path = os.path.join(PRED_EXP)
-    import h5py
-    f = h5py.File(pred_path)['predictions']
-    total_frames = max(np.shape(f[list(f.keys())[0]]))
-    ANIMAL= 'mouse20'
-    JOINTS = connectivity.JOINT_NAME_DICT[ANIMAL]
-    # short_CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
-    # num_joints = max(max(short_CONNECTIVITY))+1
-
-    pose_3d = np.empty((total_frames, 0, 3))
-    for key in JOINTS:
-        print(key)
-        try:
-            joint_preds = np.expand_dims(np.array(f[key]).T,axis=1)
-        except:
-            print("Could not find ",key," in preds")
-            continue
-
-        pose_3d = np.append(pose_3d, joint_preds, axis=1)
-    return pose_3d
 
 def skeleton_vid3D(preds,
                    frames=[3000,100000,5000000], 
@@ -41,8 +20,8 @@ def skeleton_vid3D(preds,
     N_FRAMES = 250
     START_FRAME = np.array(frames) - int(N_FRAMES/2) + 1
     ANIMAL= 'mouse20'
-    COLOR = connectivity.COLOR_DICT[ANIMAL]*len(frames)
-    short_CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
+    COLOR = skeletons.COLOR_DICT[ANIMAL]*len(frames)
+    short_CONNECTIVITY = skeletons.CONNECTIVITY_DICT[ANIMAL]
     CONNECTIVITY = short_CONNECTIVITY
     total_frames = N_FRAMES*len(frames)#max(np.shape(f[list(f.keys())[0]]))
     num_joints = max(max(short_CONNECTIVITY))+1
@@ -50,7 +29,7 @@ def skeleton_vid3D(preds,
         next_con = [(x+(i+1)*num_joints, y+(i+1)*num_joints) for x,y in short_CONNECTIVITY]
         CONNECTIVITY=CONNECTIVITY+next_con
     # import pdb; pdb.set_trace()
-    JOINTS = connectivity.JOINT_NAME_DICT[ANIMAL]
+    JOINTS = skeletons.JOINT_NAME_DICT[ANIMAL]
     SAVE_ROOT = EXP_ROOT #'/media/mynewdrive/datasets/dannce/demo/markerless_mouse_2'
 
     vid_path = os.path.join(EXP_ROOT, 'videos') 

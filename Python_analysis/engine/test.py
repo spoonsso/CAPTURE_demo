@@ -7,15 +7,14 @@ from visualization import skeleton_vid3D
 
 # poseD.load_connectivity()
 
-ds = DataStruct(config_path='../embedding_analysis_ws_r01.yaml')
+ds = DataStruct(config_path='../embedding_analysis_ws_60.yaml')
 ds.load_feats(downsample=10)
 ds.load_meta()
 ds.load_connectivity()
 ds.load_preds()
 
-# skeleton_vid3D(ds.pose_3d,
-#                ds.connectivity,
-#                frames = [3000,100000,2000000],
-#                SAVE_ROOT = ''.join([ds.out_path,'/videos/']))
+skeleton_vid3D(data = ds,
+               frames = [3000,100000,2000000],
+               SAVE_ROOT = ''.join([ds.out_path,'/videos/']))
 
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()

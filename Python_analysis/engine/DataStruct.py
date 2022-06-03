@@ -1,7 +1,5 @@
-from dataclasses import dataclass
 import pandas as pd
 import numpy as np
-import scipy.io
 import h5py
 import hdf5storage
 import matplotlib.pyplot as plt
@@ -11,7 +9,7 @@ class DataStruct:
 
     _props = [
         'analysis_path',
-        'preds_path',
+        'pose_path',
         'meta_path',
         'out_path',
         'embedding_method',
@@ -38,15 +36,15 @@ class DataStruct:
 
         (
             self.analysis_path,
-            self.preds_path,
+            self.pose_path,
             self.meta_path,
             self.out_path,
             self.results_path,
             self.skeleton_path,
+            self.skeleton_name,
             self.embedding_method,
             self.exp_key,
             self.upsampled,
-            self.skeleton_name
         ) = tuple(self.read_config(config_path).values())
 
         self.granularity = None
@@ -154,9 +152,9 @@ class DataStruct:
             config_dict - Dict of path variables to data in config file
         '''
         if config_params is None:
-            config_params = ['analysis_path','preds_path','meta_path','out_path',
-                             'results_path','skeleton_path','embedding_method','exp_key',
-                             'upsampled','skeleton_name']
+            config_params = ['analysis_path','pose_path','meta_path','out_path',
+                             'results_path','skeleton_path','skeleton_name',
+                             'embedding_method','exp_key','upsampled']
 
         import yaml
         with open(filepath) as f:
@@ -188,7 +186,7 @@ class DataStruct:
 
     def load_feats(self,
                    analysis_path: Optional[str]=None, 
-                   preds_path: Optional[str]=None, 
+                   pose_path: Optional[str]=None, 
                    exp_key: Optional[str]=None, 
                    downsample: int = 20, 
                    return_out: bool = False):
@@ -197,7 +195,7 @@ class DataStruct:
 
         IN:
             analysis_path - Path to MATLAB analysis struct with jt_features included
-            preds_path - Path to predictions .mat file
+            pose_path - Path to predictions .mat file
             exp_key - Name of category to separate by experiment
             downsample - Factor by which to downsample features and IDs for analysis
 
@@ -207,7 +205,7 @@ class DataStruct:
             frames_with_good_tracking - Indices in merged predictions file to keep track of downsampling
         '''
         if analysis_path: self.analysis_path = analysis_path
-        if preds_path: self.preds_path = preds_path
+        if pose_path: self.pose_path = pose_path
         if exp_key: self.exp_key = exp_key
 
         analysisstruct = hdf5storage.loadmat(self.analysis_path, 
@@ -221,7 +219,7 @@ class DataStruct:
         except:
             frames_with_good_tracking = np.squeeze(analysisstruct['frames_with_good_tracking'][0][1].astype(int))-1
 
-        exp_ids_full = np.squeeze(hdf5storage.loadmat(self.preds_path, variable_names=[self.exp_key])[self.exp_key].astype(int))
+        exp_ids_full = np.squeeze(hdf5storage.loadmat(self.pose_path, variable_names=[self.exp_key])[self.exp_key].astype(int))
 
         if np.min(exp_ids_full)!=0:
             exp_ids_full -= np.min(exp_ids_full)
@@ -247,20 +245,21 @@ class DataStruct:
 
         return self
 
-    def load_preds(self, 
-                   preds_path: Optional[str] = None,
-                   connectivity = None,
-                   return_out: bool = False):
+    def load_pose(self, 
+                  pose_path: Optional[str] = None,
+                  connectivity = None,
+                  return_out: bool = False):
 
-        if preds_path: self.preds_path = preds_path
+        if pose_path: self.pose_path = pose_path
         if connectivity: self.connectivity = connectivity
 
         try:
-            f = h5py.File(self.preds_path)['predictions']
+            f = h5py.File(self.pose_path)['predictions']
             mat_v7 = True
             total_frames = max(np.shape(f[list(f.keys())[0]]))
         except:
-            f = hdf5storage.loadmat(self.preds_path, variable_names=['predictions'])['predictions']
+            print("Detected older version of '.mat' file")
+            f = hdf5storage.loadmat(self.pose_path, variable_names=['predictions'])['predictions']
             mat_v7 = False
             total_frames = max(np.shape(f[0][0][0]))
 
@@ -275,7 +274,7 @@ class DataStruct:
             except:
                 print("Could not find ",key," in preds")
                 continue
-
+            
             pose_3d = np.append(pose_3d, joint_preds, axis=1)
         
         self.pose_3d = pose_3d
@@ -285,47 +284,30 @@ class DataStruct:
         return self
 
     def load_connectivity(self, 
-                          skeleton_path=None, 
-                          skeleton_name='mouse20',
-                          return_out=False):
+                          skeleton_path: Optional[str] = None, 
+                          skeleton_name: Optional[str] = None,
+                          return_out: bool = False):
 
-        '''
-        Load in joint names, connectivities and colors for connectivites
-        IN:
-            skeleton_path: Path to Python file with dicts for skeleton information
-            skeleton_name: Key for correct skeleton in connectivity dict
+        if skeleton_path: self.skeleton_path=skeleton_path
+        if skeleton_name: self.skeleton_name=skeleton_name
 
-        '''
-        if skeleton_path:
-            self.skeleton_path=skeleton_path
+        self.connectivity = Connectivity().load(skeleton_path = self.skeleton_path,
+                                                skeleton_name = self.skeleton_name)
 
-        if self.skeleton_path.endswith('.py'):
-            import importlib.util
-            mod_spec = importlib.util.spec_from_file_location('connectivity',self.skeleton_path)
-            con = importlib.util.module_from_spec(mod_spec)
-            mod_spec.loader.exec_module(con)
-
-            joints = con.JOINT_NAME_DICT[skeleton_name] # joint names
-            colors = con.COLOR_DICT[skeleton_name] # color to be plotted for each linkage
-            links = con.CONNECTIVITY_DICT[skeleton_name] # joint linkages
-
-            self.connectivity = connectivity(joints, colors, links)
-
-            if return_out:
-                return self.connectivity
+        if return_out:
+            return self.connectivity
 
         return self
 
-
-class connectivity:
+class Connectivity:
     '''
-    Class for storing joint and skeleton settings for dannce pose estimations
+    Class for storing joint and linkage settings for dannce pose estimations
     '''
 
     def __init__(self, 
-                 joint_names: List[str], 
-                 colors: List[Tuple[float,float,float,float]], 
-                 links: List[Tuple[int,int]]):
+                 joint_names: Optional[List[str]]=[None], 
+                 colors: Optional[List[Tuple[float,float,float,float]]]=[None], 
+                 links: Optional[List[Tuple[int,int]]]=[None]):
 
         self.joint_names=joint_names
 
@@ -336,7 +318,7 @@ class connectivity:
 
     @property
     def links(self):
-        return self.conn_df['links']
+        return list(self.conn_df['links'])
 
     @links.setter
     def links(self,
@@ -345,9 +327,34 @@ class connectivity:
 
     @property
     def colors(self):
-        return self.conn_df['colors']
+        return list(self.conn_df['colors'])
 
     @colors.setter
     def colors(self,
                colors: List[Tuple[float,float,float,float]]):
         self.conn_df['colors'] = colors
+
+    def load(self, 
+             skeleton_path: str, 
+             skeleton_name: str = 'mouse20'):
+
+        '''
+        Load in joint names, connectivities and colors for connectivites
+        IN:
+            skeleton_path: Path to Python file with dicts for skeleton information
+            skeleton_name: Key for correct skeleton in connectivity dict
+
+        '''
+
+        if skeleton_path.endswith('.py'):
+            import importlib.util
+            mod_spec = importlib.util.spec_from_file_location('connectivity',skeleton_path)
+            con = importlib.util.module_from_spec(mod_spec)
+            mod_spec.loader.exec_module(con)
+
+            self.conn_df = pd.DataFrame()
+            self.joint_names = con.JOINT_NAME_DICT[skeleton_name] # joint names
+            self.colors = con.COLOR_DICT[skeleton_name] # color to be plotted for each linkage
+            self.links = con.CONNECTIVITY_DICT[skeleton_name] # joint linkages
+
+        return self

@@ -3,7 +3,7 @@ import numpy as np
 import scipy.io as sio
 import imageio
 import tqdm
-from DataStruct import connectivity
+from DataStruct import DataStruct, Connectivity
 import hdf5storage
 
 import matplotlib
@@ -20,37 +20,37 @@ palette = [(1,0.5,0),(0.5,0.5,0.85),(0,1,0),(1,0,0),(0,0,0.9),(0,1,1),
            (0,0.5,1),(0.85,0.5,0.5),(0.5,1,0),(0.5,0,1),(1,0,0.5),(0,0.9,0.6),
            (0.3,0.6,0),(0,0.3,0.6),(0.6,0.3,0),(0.3,0,0.6),(0,0.6,0.3),(0.6,0,0.3)]
 
-# def scatter(data: Union[np.array,FeatureData],
-#             color: Optional[Union[List,np.array]] = None,
-#             marker_size: int = 3,
-#             **kwargs):
-#     '''
-#     Draw a 2d tSNE plot from zValues.
+def scatter(data: Union[np.array,DataStruct],
+            color: Optional[Union[List,np.array]] = None,
+            marker_size: int = 3,
+            **kwargs):
+    '''
+    Draw a 2d tSNE plot from zValues.
 
-#     input: zValues dataframe, [num of points x 2]
-#     output: a scatter plot
-#     '''
+    input: zValues dataframe, [num of points x 2]
+    output: a scatter plot
+    '''
     
-#     if isinstance(data, FeatureData):
-#         x = data.embed_vals[:,0]
-#         y = data.embed_vals[:,1]
-#     elif isinstance(data, np.array):
-#         any(np.shape(data)==2)
-#         x = data[:,0]
-#         y = data[:,1]
-#     else:
+    if isinstance(data, DataStruct):
+        x = data.embed_vals[:,0]
+        y = data.embed_vals[:,1]
+    elif isinstance(data, np.array):
+        any(np.shape(data)==2)
+        x = data[:,0]
+        y = data[:,1]
+    else:
 
 
-#     plt.figure(figsize=[12,10])
-#     unique_animalID = np.unique(df_tSNE['animalID'])
-#     for lbl in unique_animalID:
-#         plt.scatter(x=df_tSNE['x'][df_tSNE['animalID'] == lbl], 
-#                     y=df_tSNE['y'][df_tSNE['animalID'] == lbl], 
-#                     c=color, label=lbl, s=marker_size, **kwargs)
-#     plt.legend()
-#     plt.xlabel('t-SNE1')
-#     plt.ylabel('t-SNE2')
-#     plt.show()
+    plt.figure(figsize=[12,10])
+    unique_animalID = np.unique(df_tSNE['animalID'])
+    for lbl in unique_animalID:
+        plt.scatter(x=df_tSNE['x'][df_tSNE['animalID'] == lbl], 
+                    y=df_tSNE['y'][df_tSNE['animalID'] == lbl], 
+                    c=color, label=lbl, s=marker_size, **kwargs)
+    plt.legend()
+    plt.xlabel('t-SNE1')
+    plt.ylabel('t-SNE2')
+    plt.show()
 
 
 # def draw_tSNE_interactive(self, df_tSNE, color='animalID', marker_size=3):
@@ -204,19 +204,30 @@ palette = [(1,0.5,0),(0.5,0.5,0.85),(0,1,0),(1,0,0),(0,0,0.9),(0,1,1),
 
 
 
-def skeleton_vid3D(preds,
-                   connectivity,
-                   frames=[3000,100000,5000000], 
-                   N_FRAMES = 250, 
-                   VID_NAME = '0.mp4',
-                   SAVE_ROOT = './test/skeleton_vids/'):
-    ###############################################################################################################
+def skeleton_vid3D(data: Union[DataStruct, np.array],
+                   connectivity: Optional[Connectivity]=None,
+                   frames: List = [3000,100000,5000000], 
+                   N_FRAMES: int = 250, 
+                   VID_NAME: str = '0.mp4',
+                   SAVE_ROOT: str = './test/skeleton_vids/'):
+    
+
+    if isinstance(data, DataStruct):
+        preds = data.pose_3d
+        connectivity = data.connectivity
+    else:
+        preds = data
+
+    if connectivity is None:
+        skeleton_name = 'mouse' + str(preds.shape[1])
+        connectivity = Connectivity().load('../../CAPTURE_data/skeletons.py',
+                                           skeleton_name='skeleton_name')
+
     START_FRAME = np.array(frames) - int(N_FRAMES/2) + 1
     COLOR = connectivity.colors*len(frames)
-    JOINTS = connectivity.joint_names
-    links = list(connectivity.links)
+    links = connectivity.links
     links_expand = links
-    total_frames = N_FRAMES*len(frames)#max(np.shape(f[list(f.keys())[0]]))
+    # total_frames = N_FRAMES*len(frames)#max(np.shape(f[list(f.keys())[0]]))
 
     ## Expanding connectivity for each frame to be visualized
     num_joints = max(max(links))+1
@@ -243,17 +254,13 @@ def skeleton_vid3D(preds,
     metadata = dict(title='dannce_visualization', artist='Matplotlib')
     writer = FFMpegWriter(fps=30, metadata=metadata)
 
-    ###############################################################################################################
-    # setup figure
+    
+    # Setup figure
     fig = plt.figure(figsize=(12, 12))
-
     ax_3d = fig.add_subplot(1, 1, 1, projection='3d')
-
-    import pdb; pdb.set_trace()
-
     with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
         for curr_frame in tqdm.tqdm(range(N_FRAMES)):
-            # grab imgs
+            # grab frames
             curr_frames = curr_frame + np.arange(len(frames))*N_FRAMES
             kpts_3d = np.reshape(pose_3d[curr_frames,:,:], (len(frames)*num_joints, 3))
             
