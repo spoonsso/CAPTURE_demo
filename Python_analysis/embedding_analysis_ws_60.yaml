@@ -2,20 +2,18 @@
 analysis_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/60_tadross_data/anstruct_notsne.mat'
 
 # File path of predictions file
-pose_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/60_tadross_data/merged_predictions.mat'
+pose_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/60_tadross_data/ratception_struct.mat'
 
 # File path of metadata file
 meta_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/60_tadross_data/metadata.csv'
 
 # Output folder of all plots
-out_path: '../cleaned_60_analysis/'
-
-# Output path of t-SNE batch method results
-results_path: '../cleaned_60_analysis/results.mat'
+out_path: '../60_analysis_redo/'
 
 # File path of skeletal specifications
 skeleton_path: '/home/exx/Desktop/GitHub/CAPTURE_demo/CAPTURE_data/skeletons.py'
 
+# Type of skeleton: 'mouse20' or 'mouse22'
 skeleton_name: 'mouse20'
 
 # embedding method (tsne, tsne_split, tsne_cuda, umap)
@@ -25,8 +23,3 @@ embedding_method: ['tsne_cuda']
 exp_key: 'recordingID'
 
 upsampled: 1
-
-# analysis_file_path = '/hpc/group/tdunn/joshwu/CAPTURE_demo/combined_tadross_full/fixed/analysisstruct_notsne_2.mat'
-# predictions_file_path = '/hpc/group/tdunn/st3dio/analysis/PDb/merged_predictions.mat'
-# id_name = 'videoID'
-# out_folder: './initial_tadross_analysis/'

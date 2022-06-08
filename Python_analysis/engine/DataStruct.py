@@ -39,7 +39,6 @@ class DataStruct:
             self.pose_path,
             self.meta_path,
             self.out_path,
-            self.results_path,
             self.skeleton_path,
             self.skeleton_name,
             self.embedding_method,
@@ -69,7 +68,7 @@ class DataStruct:
 
     @property
     def frame_id(self):
-        return self.data['frame_id']
+        return self.data['frame_id'].to_numpy()
 
     @frame_id.setter
     def frame_id(self,
@@ -78,7 +77,7 @@ class DataStruct:
     
     @property
     def exp_id(self):
-        return self.data['exp_id']
+        return self.data['exp_id'].to_numpy()
 
     @exp_id.setter
     def exp_id(self,
@@ -104,7 +103,7 @@ class DataStruct:
 
     @property
     def embed_vals(self):
-        return self.data['embed_vals'].to_numpy()
+        return np.array(list(self.data['embed_vals'].to_numpy()))
 
     @embed_vals.setter
     def embed_vals(self,
@@ -130,8 +129,10 @@ class DataStruct:
 
     def write_pickle(self,
                      out_path: Optional[str] = None):
+        if out_path is None:
+            out_path = self.out_path
         import pickle
-        pickle.dump(self,out_path)
+        pickle.dump(self, open(''.join([out_path,"datastruct.p"]), "wb"))
 
     #TODO: Xuliang
     # def save_mat():
@@ -153,7 +154,7 @@ class DataStruct:
         '''
         if config_params is None:
             config_params = ['analysis_path','pose_path','meta_path','out_path',
-                             'results_path','skeleton_path','skeleton_name',
+                             'skeleton_path','skeleton_name',
                              'embedding_method','exp_key','upsampled']
 
         import yaml
@@ -210,8 +211,8 @@ class DataStruct:
 
         analysisstruct = hdf5storage.loadmat(self.analysis_path, 
                                              variable_names=['jt_features',
-                                                             'frames_with_good_tracking',
-                                                             'tsnegranularity'])
+                                                             'frames_with_good_tracking'])
+                                                            #  'tsnegranularity'])
         features = analysisstruct['jt_features']
 
         try:
@@ -238,7 +239,7 @@ class DataStruct:
         self.exp_id = exp_id
         self.frame_id = frames_with_good_tracking
         self.features = features
-        self.downsample = downsample*int(analysisstruct['tsnegranularity'])
+        self.downsample = downsample#*int(analysisstruct['tsnegranularity'])
 
         if return_out:
             return features, exp_id, frames_with_good_tracking

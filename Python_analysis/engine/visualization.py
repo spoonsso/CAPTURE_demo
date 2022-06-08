@@ -3,7 +3,6 @@ import numpy as np
 import scipy.io as sio
 import imageio
 import tqdm
-from DataStruct import DataStruct, Connectivity
 import hdf5storage
 
 import matplotlib
@@ -12,7 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 from typing import Optional, Union, List
 
-# from FeatureData import FeatureData
+from DataStruct import DataStruct, Connectivity
+from embed import Watershed, GaussDensity
 
 palette = [(1,0.5,0),(0.5,0.5,0.85),(0,1,0),(1,0,0),(0,0,0.9),(0,1,1),
            (0.4,0.4,0.4),(0.5,0.85,0.5),(0.5,0.15,0.5),
@@ -20,9 +20,10 @@ palette = [(1,0.5,0),(0.5,0.5,0.85),(0,1,0),(1,0,0),(0,0,0.9),(0,1,1),
            (0,0.5,1),(0.85,0.5,0.5),(0.5,1,0),(0.5,0,1),(1,0,0.5),(0,0.9,0.6),
            (0.3,0.6,0),(0,0.3,0.6),(0.6,0.3,0),(0.3,0,0.6),(0,0.6,0.3),(0.6,0,0.3)]
 
-def scatter(data: Union[np.array,DataStruct],
-            color: Optional[Union[List,np.array]] = None,
+def scatter(data: Union[np.ndarray,DataStruct],
+            color: Optional[Union[List,np.ndarray]] = None,
             marker_size: int = 3,
+            filepath: str = './plot_folder/scatter.png',
             **kwargs):
     '''
     Draw a 2d tSNE plot from zValues.
@@ -30,27 +31,233 @@ def scatter(data: Union[np.array,DataStruct],
     input: zValues dataframe, [num of points x 2]
     output: a scatter plot
     '''
-    
     if isinstance(data, DataStruct):
         x = data.embed_vals[:,0]
         y = data.embed_vals[:,1]
-    elif isinstance(data, np.array):
-        any(np.shape(data)==2)
-        x = data[:,0]
-        y = data[:,1]
+    elif isinstance(data, np.ndarray):
+        if data.shape.index(2) == 1:
+            x = data[:,0]
+            y = data[:,1]
+        else:
+            x = data[0,:]
+            y = data[1,:]
+
+    f = plt.figure()
+    plt.scatter(data[:,0], data[:,1], marker='.', s=marker_size, linewidths=0,
+                c=color,cmap='viridis_r', alpha=0.75)
+    plt.xlabel('t-SNE 1')
+    plt.ylabel('t-SNE 2')
+    if color is not None:
+        plt.colorbar()
+    if filepath:
+        plt.savefig(filepath,dpi=400)
+    plt.close()
+
+
+    # plt.figure(figsize=[12,10])
+    # unique_animalID = np.unique(df_tSNE['animalID'])
+    # for lbl in unique_animalID:
+    #     plt.scatter(x=df_tSNE['x'][df_tSNE['animalID'] == lbl], 
+    #                 y=df_tSNE['y'][df_tSNE['animalID'] == lbl], 
+    #                 c=color, label=lbl, s=marker_size, **kwargs)
+    # plt.legend()
+    # plt.xlabel('t-SNE1')
+    # plt.ylabel('t-SNE2')
+    # plt.show()
+
+def watershed(ws_map: np.ndarray,
+              ws_borders: Optional[np.ndarray] = None,
+              filepath: str='./plot_folder/watershed.png'):
+    '''
+    Plotting a watershed map with clusters colored
+
+    '''
+    f = plt.figure()
+    ax = f.add_subplot(111)
+    ax.imshow(ws_map)
+    ax.set_aspect('auto')
+    if borders:
+        ax.plot(ws_borders[:,0],ws_borders[:,1],'.r',markersize=0.05)
+    plt.savefig(''.join([filename,'_watershed.png']),dpi=400)
+    plt.close()
+
+def scatter_on_watershed(data: DataStruct,
+                         watershed: GaussDensity,
+                         column: str):
+    labels = data.data[column].values
+
+    if not os.path.exists(''.join([data.out_path,'points_by_cluster/'])):
+        os.makedirs(''.join([data.out_path,'points_by_cluster/']))
+
+    extent = [*watershed.hist_range[0], *watershed.hist_range[1]]
+
+    f = plt.figure()
+    ax = f.add_subplot(111)
+    ax.imshow(watershed.watershed_map, zorder=1, extent=extent)
+    ax.plot(data.embed_vals[:,0], data.embed_vals[:,1],
+            '.r',markersize=1,alpha=0.1, zorder=2)
+    ax.set_aspect('auto')
+    filename = ''.join([data.out_path,'points_by_cluster/all.png'])
+    plt.savefig(filename,dpi=400)
+    plt.close()
+
+    print("Plotting scatter on watershed for each ", column)
+    for i, label in tqdm.tqdm(enumerate(np.unique(labels))):
+        embed_vals = data.embed_vals[data.data[column]==label]
+
+        f = plt.figure()
+        ax = f.add_subplot(111)
+        ax.imshow(watershed.watershed_map, zorder=0,
+                  extent=extent)
+
+        ax.plot(embed_vals[:,0], embed_vals[:,1],'.r',markersize=1,alpha=0.1, zorder=1)
+        ax.set_aspect('auto')
+        filename = ''.join([data.out_path,'points_by_cluster/',column,'_points_',str(label),'.png'])
+        plt.savefig(filename,dpi=400)
+        plt.close()
+
+
+def density(density: np.ndarray,
+            ws_borders: Optional[np.ndarray] = None,
+            filepath: str='./plot_folder/density.png'):
+    f = plt.figure()
+    ax = f.add_subplot(111)
+    if ws_borders is not None:
+        ax.plot(ws_borders[:,0],ws_borders[:,1],'.r',markersize=0.1)
+    ax.imshow(density)
+    ax.set_aspect('auto')
+    plt.savefig(filepath, dpi=400)
+    plt.close()
+
+def density_cat(data: DataStruct,
+                column: str,
+                watershed: Watershed,
+                filepath: str='./plot_folder/density_by_label.png',
+                n_col: int=4):
+    '''
+    Plot densities by a category label
+    '''
+    labels = data.data[column].values
+    n_rows = int(np.ceil(len(np.unique(labels))/n_col))
+    f,ax_arr = plt.subplots(n_rows,n_col,
+                            figsize=((n_col+1)*4,n_rows*4))
+
+    # Loop over unique labels
+    for i,label in enumerate(np.unique(labels)):
+        embed_vals = data.embed_vals[data.meta_by_frame[column]==label] # Indexing by label
+        density = watershed.fit_density(embed_vals,new=False) # Fit density on old axes
+        ax_arr[int(i/n_col),i%n_col].imshow(density)
+
+        if watershed is not None:
+            ax_arr[int(i/n_col),i%n_col].plot(watershed.borders[:,0], 
+                                              watershed.borders[:,1],
+                                              '.k', markersize=0.1)
+        ax_arr[int(i/n_col),i%n_col].set_aspect('auto')
+        ax_arr[int(i/n_col),i%n_col].set_title(label)
+        ax_arr[int(i/n_col),i%n_col].set_xlabel('t-SNE 1')
+        ax_arr[int(i/n_col),i%n_col].set_ylabel('t-SNE 2')
+    f.tight_layout()
+    plt.savefig(filepath, dpi=400)
+    plt.close()
+
+
+def skeleton_vid3D_cat(data: DataStruct,
+                       column: str,
+                       n_skeletons: int = 10):
+
+    labels = data.data[column].values
+    index = np.arange(len(labels))*data.downsample
+    for label in tqdm.tqdm(np.unique(labels)):
+        label_idx = index[labels==label]
+        if len(label_idx)==0:
+            continue
+        else:
+            num_points = min(len(label_idx),n_skeletons)
+            sampled_points = np.random.permutation(label_idx)[:num_points]
+            skeleton_vid3D(data,
+                           frames = sampled_points,
+                           VID_NAME = ''.join([column,'_',str(label),'.mp4']),
+                           SAVE_ROOT = ''.join([data.out_path, 'skeleton_vids/']))
+
+
+def skeleton_vid3D(data: Union[DataStruct, np.ndarray],
+                   connectivity: Optional[Connectivity]=None,
+                   frames: List = [3000,100000,5000000], 
+                   N_FRAMES: int = 300,
+                   VID_NAME: str = '0.mp4',
+                   SAVE_ROOT: str = './test/skeleton_vids/'):
+    
+
+    if isinstance(data, DataStruct):
+        preds = data.pose_3d
+        connectivity = data.connectivity
     else:
+        preds = data
 
+    if connectivity is None:
+        skeleton_name = 'mouse' + str(preds.shape[1])
+        connectivity = Connectivity().load('../../CAPTURE_data/skeletons.py',
+                                           skeleton_name='skeleton_name')
 
-    plt.figure(figsize=[12,10])
-    unique_animalID = np.unique(df_tSNE['animalID'])
-    for lbl in unique_animalID:
-        plt.scatter(x=df_tSNE['x'][df_tSNE['animalID'] == lbl], 
-                    y=df_tSNE['y'][df_tSNE['animalID'] == lbl], 
-                    c=color, label=lbl, s=marker_size, **kwargs)
-    plt.legend()
-    plt.xlabel('t-SNE1')
-    plt.ylabel('t-SNE2')
-    plt.show()
+    START_FRAME = np.array(frames) - int(N_FRAMES/2) + 1
+    COLOR = connectivity.colors*len(frames)
+    links = connectivity.links
+    links_expand = links
+    # total_frames = N_FRAMES*len(frames)#max(np.shape(f[list(f.keys())[0]]))
+
+    ## Expanding connectivity for each frame to be visualized
+    num_joints = max(max(links))+1
+    for i in range(len(frames)-1):
+        next_con = [(x+(i+1)*num_joints, y+(i+1)*num_joints) for x,y in links]
+        links_expand=links_expand+next_con
+
+    save_path = os.path.join(SAVE_ROOT)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    # get dannce predictions
+    pose_3d = np.empty((0, num_joints, 3))
+    for start in START_FRAME:
+        pose_3d = np.append(pose_3d, preds[start:start+N_FRAMES,:,:],axis=0)
+
+    # compute 3d grid limits 
+    offset = 50
+    x_lim1, x_lim2 = np.min(pose_3d[:, :, 0])-offset, np.max(pose_3d[:, :, 0])+offset
+    y_lim1, y_lim2 = np.min(pose_3d[:, :, 1])-offset, np.max(pose_3d[:, :, 1])+offset
+    z_lim1, z_lim2 = np.minimum(0, np.min(pose_3d[:, :, 2])), np.max(pose_3d[:, :, 2])+10
+
+    # set up video writer
+    metadata = dict(title='dannce_visualization', artist='Matplotlib')
+    writer = FFMpegWriter(fps=90, metadata=metadata)
+
+    
+    # Setup figure
+    fig = plt.figure(figsize=(12, 12))
+    ax_3d = fig.add_subplot(1, 1, 1, projection='3d')
+    with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
+        for curr_frame in tqdm.tqdm(range(N_FRAMES)):
+            # grab frames
+            curr_frames = curr_frame + np.arange(len(frames))*N_FRAMES
+            kpts_3d = np.reshape(pose_3d[curr_frames,:,:], (len(frames)*num_joints, 3))
+            
+            # plot 3d moving skeletons
+            ax_3d.scatter(kpts_3d[:, 0], kpts_3d[:, 1], kpts_3d[:, 2],  marker='.', color='black', linewidths=0.5)
+            for color, (index_from, index_to) in zip(COLOR, links_expand):
+                xs, ys, zs = [np.array([kpts_3d[index_from, j], kpts_3d[index_to, j]]) for j in range(3)] 
+                ax_3d.plot3D(xs, ys, zs, c=color, lw=2)
+
+            ax_3d.set_xlim(x_lim1, x_lim2)
+            ax_3d.set_ylim(y_lim1, y_lim2)
+            ax_3d.set_zlim(z_lim1, z_lim2)
+            ax_3d.set_title("3D Tracking")
+            # ax_3d.set_box_aspect([1,1,1])
+
+            # grab frame and write to vid
+            writer.grab_frame()
+            ax_3d.clear()
+    
+    plt.close()
+    return 0
 
 
 # def draw_tSNE_interactive(self, df_tSNE, color='animalID', marker_size=3):
@@ -201,87 +408,3 @@ def scatter(data: Union[np.array,DataStruct],
 #     video_name = "video{}_time{}m{}s.mp4".format(vid_idx, round(timestamp // 60, 2), round(timestamp % 60, 2))
 #     ffmpeg_extract_subclip(anst.videopaths[vid_idx], start, end, targetname=video_name)
 #     print('Video clip {} generated successfully with length of {} secs.'.format(video_name, round(end - start, 2)))
-
-
-
-def skeleton_vid3D(data: Union[DataStruct, np.array],
-                   connectivity: Optional[Connectivity]=None,
-                   frames: List = [3000,100000,5000000], 
-                   N_FRAMES: int = 250, 
-                   VID_NAME: str = '0.mp4',
-                   SAVE_ROOT: str = './test/skeleton_vids/'):
-    
-
-    if isinstance(data, DataStruct):
-        preds = data.pose_3d
-        connectivity = data.connectivity
-    else:
-        preds = data
-
-    if connectivity is None:
-        skeleton_name = 'mouse' + str(preds.shape[1])
-        connectivity = Connectivity().load('../../CAPTURE_data/skeletons.py',
-                                           skeleton_name='skeleton_name')
-
-    START_FRAME = np.array(frames) - int(N_FRAMES/2) + 1
-    COLOR = connectivity.colors*len(frames)
-    links = connectivity.links
-    links_expand = links
-    # total_frames = N_FRAMES*len(frames)#max(np.shape(f[list(f.keys())[0]]))
-
-    ## Expanding connectivity for each frame to be visualized
-    num_joints = max(max(links))+1
-    for i in range(len(frames)-1):
-        next_con = [(x+(i+1)*num_joints, y+(i+1)*num_joints) for x,y in links]
-        links_expand=links_expand+next_con
-
-    save_path = os.path.join(SAVE_ROOT)
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-
-    # get dannce predictions
-    pose_3d = np.empty((0, num_joints, 3))
-    for start in START_FRAME:
-        pose_3d = np.append(pose_3d, preds[start:start+N_FRAMES,:,:],axis=0)
-
-    # compute 3d grid limits 
-    offset = 50
-    x_lim1, x_lim2 = np.min(pose_3d[:, :, 0])-offset, np.max(pose_3d[:, :, 0])+offset
-    y_lim1, y_lim2 = np.min(pose_3d[:, :, 1])-offset, np.max(pose_3d[:, :, 1])+offset
-    z_lim1, z_lim2 = np.minimum(0, np.min(pose_3d[:, :, 2])), np.max(pose_3d[:, :, 2])+10
-
-    # set up video writer
-    metadata = dict(title='dannce_visualization', artist='Matplotlib')
-    writer = FFMpegWriter(fps=30, metadata=metadata)
-
-    
-    # Setup figure
-    fig = plt.figure(figsize=(12, 12))
-    ax_3d = fig.add_subplot(1, 1, 1, projection='3d')
-    with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
-        for curr_frame in tqdm.tqdm(range(N_FRAMES)):
-            # grab frames
-            curr_frames = curr_frame + np.arange(len(frames))*N_FRAMES
-            kpts_3d = np.reshape(pose_3d[curr_frames,:,:], (len(frames)*num_joints, 3))
-            
-            # plot 3d moving skeletons
-            ax_3d.scatter(kpts_3d[:, 0], kpts_3d[:, 1], kpts_3d[:, 2],  marker='.', color='black', linewidths=0.5)
-            for color, (index_from, index_to) in zip(COLOR, links_expand):
-                xs, ys, zs = [np.array([kpts_3d[index_from, j], kpts_3d[index_to, j]]) for j in range(3)] 
-                ax_3d.plot3D(xs, ys, zs, c=color, lw=2)
-
-            ax_3d.set_xlim(x_lim1, x_lim2)
-            ax_3d.set_ylim(y_lim1, y_lim2)
-            ax_3d.set_zlim(z_lim1, z_lim2)
-            ax_3d.set_title("3D Tracking")
-            # ax_3d.set_box_aspect([1,1,1])
-
-            # grab frame and write to vid
-            writer.grab_frame()
-            ax_3d.clear()
-    
-    plt.close()
-    return 0
-
-
-    

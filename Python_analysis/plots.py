@@ -5,7 +5,7 @@ from skimage import measure
 import numpy as np
 
 def embed_scatter(data, 
-                  filename = './embedding_scatter',
+                  filename = './embedding_scatter/',
                   save = True,
                   colorby = None):
     f = plt.figure()
@@ -15,8 +15,8 @@ def embed_scatter(data,
         color = None
     plt.scatter(data[:,0], data[:,1], marker='.', s=3, linewidths=0,
                 c=color,cmap='viridis_r', alpha=0.75)
-    plt.xlabel('tSNE 1')
-    plt.ylabel('tSNE 2')
+    plt.xlabel('t-SNE 1')
+    plt.ylabel('t-SNE 2')
     if colorby is not None:
         plt.colorbar()
     if save:
@@ -131,35 +131,6 @@ def reembed(template, template_idx, full_data, method='tsne_cuda', plot_folder='
         clustering(final_embedding, filename)
 
     return final_embedding, temp_embedding
-
-def map_density(data, bins_per_edge=1000, sigma=15, max_clip=0.75, x_range=None, y_range=None, hist_range=None):
-    if x_range is None:
-        x_range = int(np.ceil(np.amax(data[:,0])) - np.floor(np.amin(data[:,0])))
-
-    if y_range is None:
-        y_range = int(np.ceil(np.amax(data[:,1])) - np.floor(np.amin(data[:,1])))
-
-    if hist_range is None:
-        hist_range = [[int(np.floor(np.amin(data[:,0]))-x_range/40),int(np.ceil(np.amax(data[:,0]))+x_range/40)],
-                      [int(np.floor(np.amin(data[:,1]))-y_range/40),int(np.ceil(np.amax(data[:,1]))+y_range/40)]]
-    
-    hist,xedges,yedges = np.histogram2d(data[:,0], data[:,1], bins=[bins_per_edge, bins_per_edge],
-                          range=hist_range,
-                          density=False)
-    hist = np.rot90(hist)
-
-    assert xedges[0]<xedges[-1] and yedges[0]<yedges[1]
-
-    x_bin_idx = np.zeros(np.shape(data[:,0]))
-    y_bin_idx = np.zeros(np.shape(data[:,1]))
-    for i in range(len(x_bin_idx)):
-        y_bin_idx[i] = np.argmax(xedges>data[i,0])-1
-        x_bin_idx[i] = bins_per_edge-np.argmax(yedges>data[i,1])
-
-    gauss_filt_hist = gaussian_filter(hist, sigma=sigma)
-    gauss_filt_hist = np.clip(gauss_filt_hist, None, np.amax(gauss_filt_hist)*max_clip)
-    
-    return gauss_filt_hist, x_bin_idx, y_bin_idx
 
 
 def cluster_frequencies(data_by_cluster, batch_ID):

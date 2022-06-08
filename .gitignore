@@ -15,6 +15,7 @@ $RECYCLE.BIN/
 *.mat
 *.sh
 *.out
+*.p
 # Windows Installer files
 *.cab
 *.msi
