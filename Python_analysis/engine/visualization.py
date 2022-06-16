@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import scipy.io as sio
+import scipy as scp
 import imageio
 import tqdm
 import hdf5storage
@@ -11,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 from typing import Optional, Union, List
 
-from DataStruct import DataStruct, Connectivity
+import DataStruct as ds
 from embed import Watershed, GaussDensity
 
 palette = [(1,0.5,0),(0.5,0.5,0.85),(0,1,0),(1,0,0),(0,0,0.9),(0,1,1),
@@ -20,7 +21,7 @@ palette = [(1,0.5,0),(0.5,0.5,0.85),(0,1,0),(1,0,0),(0,0,0.9),(0,1,1),
            (0,0.5,1),(0.85,0.5,0.5),(0.5,1,0),(0.5,0,1),(1,0,0.5),(0,0.9,0.6),
            (0.3,0.6,0),(0,0.3,0.6),(0.6,0.3,0),(0.3,0,0.6),(0,0.6,0.3),(0.6,0,0.3)]
 
-def scatter(data: Union[np.ndarray,DataStruct],
+def scatter(data: Union[np.ndarray,ds.DataStruct],
             color: Optional[Union[List,np.ndarray]] = None,
             marker_size: int = 3,
             filepath: str = './plot_folder/scatter.png',
@@ -31,7 +32,7 @@ def scatter(data: Union[np.ndarray,DataStruct],
     input: zValues dataframe, [num of points x 2]
     output: a scatter plot
     '''
-    if isinstance(data, DataStruct):
+    if isinstance(data, ds.DataStruct):
         x = data.embed_vals[:,0]
         y = data.embed_vals[:,1]
     elif isinstance(data, np.ndarray):
@@ -81,7 +82,7 @@ def watershed(ws_map: np.ndarray,
     plt.savefig(''.join([filename,'_watershed.png']),dpi=400)
     plt.close()
 
-def scatter_on_watershed(data: DataStruct,
+def scatter_on_watershed(data: ds.DataStruct,
                          watershed: GaussDensity,
                          column: str):
     labels = data.data[column].values
@@ -129,7 +130,7 @@ def density(density: np.ndarray,
     plt.savefig(filepath, dpi=400)
     plt.close()
 
-def density_cat(data: DataStruct,
+def density_cat(data: ds.DataStruct,
                 column: str,
                 watershed: Watershed,
                 filepath: str='./plot_folder/density_by_label.png',
@@ -138,35 +139,48 @@ def density_cat(data: DataStruct,
     Plot densities by a category label
     '''
     labels = data.data[column].values
+    n_col = min(n_col, len(np.unique(labels)))
     n_rows = int(np.ceil(len(np.unique(labels))/n_col))
     f,ax_arr = plt.subplots(n_rows,n_col,
                             figsize=((n_col+1)*4,n_rows*4))
 
     # Loop over unique labels
     for i,label in enumerate(np.unique(labels)):
-        embed_vals = data.embed_vals[data.meta_by_frame[column]==label] # Indexing by label
+        embed_vals = data.embed_vals[data.data[column]==label] # Indexing by label
         density = watershed.fit_density(embed_vals,new=False) # Fit density on old axes
-        ax_arr[int(i/n_col),i%n_col].imshow(density)
+        if n_rows == 1:
+            ax_arr[i%n_col].imshow(density)#scp.special.softmax(density))
 
-        if watershed is not None:
-            ax_arr[int(i/n_col),i%n_col].plot(watershed.borders[:,0], 
-                                              watershed.borders[:,1],
-                                              '.k', markersize=0.1)
-        ax_arr[int(i/n_col),i%n_col].set_aspect('auto')
-        ax_arr[int(i/n_col),i%n_col].set_title(label)
-        ax_arr[int(i/n_col),i%n_col].set_xlabel('t-SNE 1')
-        ax_arr[int(i/n_col),i%n_col].set_ylabel('t-SNE 2')
+            if watershed is not None:
+                ax_arr[i%n_col].plot(watershed.borders[:,0], 
+                                    watershed.borders[:,1],
+                                    '.k', markersize=0.1)
+            ax_arr[i%n_col].set_aspect('auto')
+            ax_arr[i%n_col].set_title(label)
+            ax_arr[i%n_col].set_xlabel('t-SNE 1')
+            ax_arr[i%n_col].set_ylabel('t-SNE 2')
+        else:
+            ax_arr[int(i/n_col),i%n_col].imshow(scp.special.softmax(density))
+
+            if watershed is not None:
+                ax_arr[int(i/n_col),i%n_col].plot(watershed.borders[:,0], 
+                                                watershed.borders[:,1],
+                                                '.k', markersize=0.1)
+            ax_arr[int(i/n_col),i%n_col].set_aspect('auto')
+            ax_arr[int(i/n_col),i%n_col].set_title(label)
+            ax_arr[int(i/n_col),i%n_col].set_xlabel('t-SNE 1')
+            ax_arr[int(i/n_col),i%n_col].set_ylabel('t-SNE 2')
     f.tight_layout()
     plt.savefig(filepath, dpi=400)
     plt.close()
 
 
-def skeleton_vid3D_cat(data: DataStruct,
+def skeleton_vid3D_cat(data: ds.DataStruct,
                        column: str,
                        n_skeletons: int = 10):
 
     labels = data.data[column].values
-    index = np.arange(len(labels))*data.downsample
+    index = np.arange(len(labels))
     for label in tqdm.tqdm(np.unique(labels)):
         label_idx = index[labels==label]
         if len(label_idx)==0:
@@ -175,20 +189,20 @@ def skeleton_vid3D_cat(data: DataStruct,
             num_points = min(len(label_idx),n_skeletons)
             sampled_points = np.random.permutation(label_idx)[:num_points]
             skeleton_vid3D(data,
-                           frames = sampled_points,
+                           frames = data.frame_id[sampled_points], # b/c moving frames filter
                            VID_NAME = ''.join([column,'_',str(label),'.mp4']),
                            SAVE_ROOT = ''.join([data.out_path, 'skeleton_vids/']))
 
 
-def skeleton_vid3D(data: Union[DataStruct, np.ndarray],
-                   connectivity: Optional[Connectivity]=None,
+def skeleton_vid3D(data: Union[ds.DataStruct, np.ndarray],
+                   connectivity: Optional[ds.Connectivity]=None,
                    frames: List = [3000,100000,5000000], 
                    N_FRAMES: int = 300,
                    VID_NAME: str = '0.mp4',
                    SAVE_ROOT: str = './test/skeleton_vids/'):
     
 
-    if isinstance(data, DataStruct):
+    if isinstance(data, ds.DataStruct):
         preds = data.pose_3d
         connectivity = data.connectivity
     else:

@@ -4,6 +4,7 @@ import h5py
 import hdf5storage
 import matplotlib.pyplot as plt
 from typing import Optional, Union, List, Tuple
+import yaml
 
 class DataStruct:
 
@@ -12,9 +13,7 @@ class DataStruct:
         'pose_path',
         'meta_path',
         'out_path',
-        'embedding_method',
         'exp_key',
-        'upsampled',
         'embed_vals',
         'data',
         'meta_by_frame',
@@ -29,11 +28,12 @@ class DataStruct:
                  meta: pd.DataFrame = pd.DataFrame(),
                  full_data: pd.DataFrame = pd.DataFrame(),
                  connectivity = None,
+                 out_path: Optional[str] = None,
+                 downsample: Optional[int] = None,
                  config_path: Optional[str] = None):
 
         self.config_path = config_path
-        # Paths and params from config
-
+        
         (
             self.analysis_path,
             self.pose_path,
@@ -41,26 +41,30 @@ class DataStruct:
             self.out_path,
             self.skeleton_path,
             self.skeleton_name,
-            self.embedding_method,
             self.exp_key,
-            self.upsampled,
         ) = tuple(self.read_config(config_path).values())
 
-        self.granularity = None
+        if out_path is not None:
+            self.out_path = out_path
+            
+        self.downsample = downsample
         self.data = data
         self.meta = meta
         self.full_data = full_data
         self.connectivity = connectivity
-        self.exp_id = None
-        #self.meta_columns = [List of column names] TODO: XuLiang
+        #self.meta_columns = [List of column names] TODO: Xuliang
 
     def __getitem__(self, idx):
         if not isinstance(idx, tuple):
             idx=tuple(idx)
-
-        self.data = self.data.loc[idx]
-
-        return self
+        new_struct = DataStruct(data = self.data.loc[idx].reset_index(drop=True),
+                                meta = self.meta,
+                                full_data = self.full_data,
+                                connectivity = self.connectivity,
+                                out_path = self.out_path,
+                                downsample = self.downsample,
+                                config_path = self.config_path)
+        return new_struct
         
     def check_reset_data(self, len:int):
         if self.data.shape[0] != len:
@@ -140,6 +144,19 @@ class DataStruct:
     #TODO: Xuliang
     # def load_mat():
 
+    # def cluster_percentages(self,
+    #                         meta_col: str,
+    #                         plot = True):
+    #     meta_labels = self.data[meta_col].values
+    #     cluster_labels = self.data['Cluster'].values
+    #     for i, meta in enumerate(np.unique(meta_labels)):
+    #         meta_clust = cluster_labels[self.data[meta_col]==meta]
+    #         clust, counts = np.unique(meta_cluster, return_counts = True)
+
+    #     if plot = True
+
+    #     return unique_meta_labels
+
     def read_config(self,
                     filepath,
                     config_params: Optional[List[str]] = None):
@@ -155,9 +172,8 @@ class DataStruct:
         if config_params is None:
             config_params = ['analysis_path','pose_path','meta_path','out_path',
                              'skeleton_path','skeleton_name',
-                             'embedding_method','exp_key','upsampled']
+                             'exp_key']
 
-        import yaml
         with open(filepath) as f:
             config_dict = yaml.safe_load(f)
 
@@ -211,8 +227,8 @@ class DataStruct:
 
         analysisstruct = hdf5storage.loadmat(self.analysis_path, 
                                              variable_names=['jt_features',
-                                                             'frames_with_good_tracking'])
-                                                            #  'tsnegranularity'])
+                                                             'frames_with_good_tracking',
+                                                             'tsnegranularity'])
         features = analysisstruct['jt_features']
 
         try:
@@ -239,7 +255,7 @@ class DataStruct:
         self.exp_id = exp_id
         self.frame_id = frames_with_good_tracking
         self.features = features
-        self.downsample = downsample#*int(analysisstruct['tsnegranularity'])
+        self.downsample = downsample*int(analysisstruct['tsnegranularity'])
 
         if return_out:
             return features, exp_id, frames_with_good_tracking
@@ -359,3 +375,4 @@ class Connectivity:
             self.links = con.CONNECTIVITY_DICT[skeleton_name] # joint linkages
 
         return self
+        
