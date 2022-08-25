@@ -138,8 +138,8 @@ class Embed:
     def predict(self,
                 data: Union[np.ndarray, ds.DataStruct],
                 transform_method: Optional[str] = None,
-                n_trees: Optional[int] = 100,
-                k: Optional[int] = 5,
+                n_trees: Optional[int] = None,
+                k: Optional[int] = None,
                 template: Optional[np.ndarray] = None,
                 temp_embedding: Optional[np.ndarray] = None):
         '''
@@ -155,7 +155,7 @@ class Embed:
         if k is None: k = self.k
         if template is None: template = self.template
         if temp_embedding is None: temp_embedding = self.temp_embedding
-
+        
         start = time.time()
         if transform_method == 'umap':
             print("Predicting using UMAP")
@@ -163,25 +163,24 @@ class Embed:
 
         elif transform_method == 'knn':
             print("Predicting using KNN")
+            print(k)
             knn = KNNEmbed(k=k).fit(template,temp_embedding)
             embed_vals = knn.predict(data, weights='distance')
 
         elif transform_method == 'xgboost':
             import xgboost as xgb
-            print("Predicting x using XGBoost RF")
-            embed_x = xgb.XGBRFRegressor(n_estimators = n_trees,
-                                         verbosity=2).fit(template,temp_embedding[:,0])
-            embed_vals_x = np.expand_dims(embed_x.predict(data),axis=1)
-
-            print("Predicting y using XGBoost RF")
-            embed_y = xgb.XGBRFRegressor(n_estimators = n_trees,
-                                         verbosity=2).fit(template,temp_embedding[:,1])
-            embed_vals_y = np.expand_dims(embed_y.predict(data), axis=1)
-            embed_vals = np.append(embed_vals_x, embed_vals_y,axis=1)
+            print("Predicting using XGBoost RF")
+            print(n_trees)
+            embed_vals = np.zeros((np.shape(data)[0],2))
+            for i in range(2):
+                embed = xgb.XGBRFRegressor(n_estimators = n_trees,
+                                            verbosity=2).fit(template,temp_embedding[:,i])
+                embed_vals[:,i] = embed.predict(data)
+            # import pdb; pdb.set_trace()
 
         elif transform_method == 'sklearn_rf':
             from sklearn.ensemble import RandomForestRegressor
-            rf_embed = RandomForestRegressor(n_estimators = n_trees)
+            rf_embed = RandomForestRegressor(n_estimators = n_trees,n_jobs=-1)
             rf_embed = rf_embed.fit(template,temp_embedding)
             embed_vals = rf_embed.predict(data)
 
@@ -202,6 +201,7 @@ class BatchEmbed(Embed):
                  perplexity: Union[str, int] = 'auto',
                  lr: Union[str, int] = 'auto',
                  k: int = 5,
+                 n_trees: int = 100,
                  embedder = None,
                  template = None,
                  temp_idx = [],
@@ -220,6 +220,7 @@ class BatchEmbed(Embed):
                          perplexity = perplexity,
                          lr = lr,
                          k = k,
+                         n_trees = n_trees,
                          embedder = embedder,
                          template = template,
                          temp_embedding = temp_embedding)
@@ -424,8 +425,10 @@ class GaussDensity:
         # Calculate x and y limits for histogram and density
         if new or (self.hist_range is None):
             print("Calculating new histogram ranges")
-            self.hist_range = [[int(np.floor(np.amin(data[:,0]))-padding[0]),int(np.ceil(np.amax(data[:,0]))+padding[0])],
-                               [int(np.floor(np.amin(data[:,1]))-padding[1]),int(np.ceil(np.amax(data[:,1]))+padding[1])]]
+            self.hist_range = [[np.amin(data[:,0])-padding[0],np.amax(data[:,0])+padding[0]],
+                               [np.amin(data[:,1])-padding[1],np.amax(data[:,1])+padding[1]]]
+            # self.hist_range = [[int(np.floor(np.amin(data[:,0]))-padding[0]),int(np.ceil(np.amax(data[:,0]))+padding[0])],
+            #                    [int(np.floor(np.amin(data[:,1]))-padding[1]),int(np.ceil(np.amax(data[:,1]))+padding[1])]]
 
         hist, self.xedges, self.yedges = np.histogram2d(data[:,0], data[:,1], bins=[self.n_bins, self.n_bins],
                                             range=self.hist_range,
@@ -433,6 +436,7 @@ class GaussDensity:
         hist = np.rot90(hist)
 
         assert (self.xedges[0]<self.xedges[-1]) and (self.yedges[0]<self.yedges[1])
+        # import pdb; pdb.set_trace()
 
         return hist
 
@@ -466,7 +470,7 @@ class GaussDensity:
 
         if new:
             self.density = density
-
+        # import pdb; pdb.set_trace()
         return density
         
     def map_bins(self,
@@ -486,8 +490,8 @@ class GaussDensity:
 
         data_in_bin = np.zeros(np.shape(data))
         for i in range(data_in_bin.shape[0]):
-            data_in_bin[i,1] = np.argmax(self.xedges>data[i,0])-1
-            data_in_bin[i,0] = self.n_bins-np.argmax(self.yedges>data[i,1])
+            data_in_bin[i,1] = np.argmax(self.xedges>data[i,0])-1#,0,self.n_bins-1
+            data_in_bin[i,0] = (self.n_bins-np.argmax(self.yedges>data[i,1])-1)#,0,self.n_bins-1)
 
         return data_in_bin
         

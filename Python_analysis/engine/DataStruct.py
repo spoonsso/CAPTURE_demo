@@ -117,14 +117,11 @@ class DataStruct:
     @property
     def features(self):
         return np.array(list(self.data['features'].to_numpy())) # seems slow
-        # return self.data[list(range(self.feat_shape[1]))].to_numpy()
 
     @features.setter
     def features(self,
                  features: np.array):
 
-        # self.data.drop([list(range(self.feat_shape[1]))],axis=1)
-        # self.data.loc[:,list(range(features.shape[1]))] = features
         self.data['features'] = list(features) # seems slow
 
     @property
@@ -138,24 +135,25 @@ class DataStruct:
         import pickle
         pickle.dump(self, open(''.join([out_path,"datastruct.p"]), "wb"))
 
-    #TODO: Xuliang
-    # def save_mat():
+    def cluster_freq(self):
+        '''
+        Calculates the percentage of time each exp_id spends in each cluster
+        OUT:
+            freq: numpy array of (# videos x # clusters)
+        '''
+        num_clusters = np.max(self.data['Cluster'])+1
+        freq = np.zeros((len(self.meta.index), num_clusters))
+        for i in self.meta.index:
+            cluster_by_exp = self.data['Cluster'][self.data['exp_id']==i]
+            freq[i,:] = np.histogram(cluster_by_exp, bins=num_clusters, range=(-0.5,num_clusters-0.5))[0]
+        frame_totals = np.sum(freq,axis=1)
+        frame_totals = np.where(frame_totals==0, 1, frame_totals)
+        freq = freq/np.expand_dims(frame_totals,axis=1)
 
-    #TODO: Xuliang
-    # def load_mat():
+        self.freq = freq
+        import pdb; pdb.set_trace()
 
-    # def cluster_percentages(self,
-    #                         meta_col: str,
-    #                         plot = True):
-    #     meta_labels = self.data[meta_col].values
-    #     cluster_labels = self.data['Cluster'].values
-    #     for i, meta in enumerate(np.unique(meta_labels)):
-    #         meta_clust = cluster_labels[self.data[meta_col]==meta]
-    #         clust, counts = np.unique(meta_cluster, return_counts = True)
-
-    #     if plot = True
-
-    #     return unique_meta_labels
+        return freq
 
     def read_config(self,
                     filepath,
@@ -271,7 +269,7 @@ class DataStruct:
         if connectivity: self.connectivity = connectivity
 
         try:
-            f = h5py.File(self.pose_path)['predictions']
+            f = h5py.File(self.pose_path)['markers_preproc_rotated']
             mat_v7 = True
             total_frames = max(np.shape(f[list(f.keys())[0]]))
         except:

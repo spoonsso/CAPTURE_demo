@@ -97,6 +97,8 @@ def scatter_on_watershed(data: ds.DataStruct,
     ax.imshow(watershed.watershed_map, zorder=1, extent=extent)
     ax.plot(data.embed_vals[:,0], data.embed_vals[:,1],
             '.r',markersize=1,alpha=0.1, zorder=2)
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_aspect('auto')
     filename = ''.join([data.out_path,'points_by_cluster/all.png'])
     plt.savefig(filename,dpi=400)
@@ -112,6 +114,8 @@ def scatter_on_watershed(data: ds.DataStruct,
                   extent=extent)
 
         ax.plot(embed_vals[:,0], embed_vals[:,1],'.r',markersize=1,alpha=0.1, zorder=1)
+        ax.set_xticks([])
+        ax.set_yticks([])
         ax.set_aspect('auto')
         filename = ''.join([data.out_path,'points_by_cluster/',column,'_points_',str(label),'.png'])
         plt.savefig(filename,dpi=400)
@@ -126,6 +130,8 @@ def density(density: np.ndarray,
     if ws_borders is not None:
         ax.plot(ws_borders[:,0],ws_borders[:,1],'.r',markersize=0.1)
     ax.imshow(density)
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_aspect('auto')
     plt.savefig(filepath, dpi=400)
     plt.close()
@@ -159,6 +165,8 @@ def density_cat(data: ds.DataStruct,
             ax_arr[i%n_col].set_title(label)
             ax_arr[i%n_col].set_xlabel('t-SNE 1')
             ax_arr[i%n_col].set_ylabel('t-SNE 2')
+            ax_arr[i%n_col].set_xticks([])
+            ax_arr[i%n_col].set_yticks([])
         else:
             ax_arr[int(i/n_col),i%n_col].imshow(scp.special.softmax(density))
 
@@ -170,14 +178,52 @@ def density_cat(data: ds.DataStruct,
             ax_arr[int(i/n_col),i%n_col].set_title(label)
             ax_arr[int(i/n_col),i%n_col].set_xlabel('t-SNE 1')
             ax_arr[int(i/n_col),i%n_col].set_ylabel('t-SNE 2')
+            ax_arr[int(i/n_col),i%n_col].set_xticks([])
+            ax_arr[int(i/n_col),i%n_col].set_yticks([])
     f.tight_layout()
     plt.savefig(filepath, dpi=400)
     plt.close()
 
+def cluster_freq(data: ds.DataStruct):
+    colors = ["tab:orange","tab:red","tab:green","tab:blue",
+              "tab:purple","tab:brown","tab:pink","tab:gray",
+              "tab:olive","tab:cyan","#dc0ab4","#00b7c7"]
+    freq = data.freq
+    f,ax_arr = plt.subplots(5,1,sharex='all',figsize=(30,11))
+    for j in range(freq.shape[0]): # For each condition
+        for i in range(freq.shape[2]):
+            ax_arr[j].plot(range(num_clusters), freq[j,:,i], color=colors[i], label=str(unique_labels[i]))#''.join(['Animal',str(i)]))
+        ax_arr[j].set_title(conditions[j],pad=-14)
+        ax_arr[j].spines['top'].set_visible(False)
+        ax_arr[j].get_xaxis().set_visible(False)
+        ax_arr[j].spines['right'].set_visible(False)
+        ax_arr[j].spines['bottom'].set_visible(False)
+    ax_arr[1].set_ylabel('% Time Spent in Cluster')
+    ax_arr[0].legend(loc='upper right',ncol=6)
+    markers = ['o','v','s']
+    for j in range(3,5): # For mean and variance plots
+        for i in range(freq.shape[0]): #for each conditiion
+            ax_arr[j].plot(range(num_clusters),np.mean(freq[j,:,:],axis=1),color=colors[j],label=conditions[i], 
+                            marker=markers[j], markersize=5,linewidth=0)
+            # ax_arr[4].plot(range(num_clusters),np.std(freq[j,:,:],axis=1),color=colors[j],label=conditions[j], 
+            #                 marker=markers[j], markersize=5, linewidth=0)
+        ax_arr[j].spines['top'].set_visible(False)
+        ax_arr[j].spines['right'].set_visible(False)
+
+    ax_arr[3].legend(loc='upper right',ncol=3)
+    ax_arr[3].spines['bottom'].set_visible(False)
+    ax_arr[3].get_xaxis().set_visible(False)
+    ax_arr[3].set_ylabel("Mean")
+    ax_arr[4].set_ylabel("Standard Deviation")
+    ax_arr[4].set_xlabel('Cluster')
+    ax_arr[4].set_xlim([-0.25, 60.25])
+    f.tight_layout()
+    plt.subplots_adjust(hspace=0.05)
+    plt.savefig(''.join([data.out_path,'mean_sd_cluster_freq.png']),dpi=400)
 
 def skeleton_vid3D_cat(data: ds.DataStruct,
                        column: str,
-                       n_skeletons: int = 10):
+                       n_skeletons: int = 9):
 
     labels = data.data[column].values
     index = np.arange(len(labels))
@@ -187,19 +233,38 @@ def skeleton_vid3D_cat(data: ds.DataStruct,
             continue
         else:
             num_points = min(len(label_idx),n_skeletons)
-            sampled_points = np.random.permutation(label_idx)[:num_points]
-            skeleton_vid3D(data,
-                           frames = data.frame_id[sampled_points], # b/c moving frames filter
-                           VID_NAME = ''.join([column,'_',str(label),'.mp4']),
-                           SAVE_ROOT = ''.join([data.out_path, 'skeleton_vids/']))
+            permuted_points = data.frame_id[np.random.permutation(label_idx)]# b/c moving frames filter
+            sampled_points = []
+            for i in range(len(permuted_points)):
+                # import pdb; pdb.set_trace()
+                if i == 0:
+                    # print("first idx")
+                    sampled_points = np.array([permuted_points[i]])
+                    # print(sampled_points)
+                    continue
+                elif len(sampled_points)==num_points: # sampled enough points
+                    break
+                elif any(np.abs(permuted_points[i] - sampled_points)<200): # point is not far enough from previous points
+                    continue
+                else:
+                    sampled_points = np.append(sampled_points,permuted_points[i])
+
+            print(sampled_points)
+            # import pdb; pdb.set_trace()
+            skeleton_vid3D_expanded(data,
+                                    label=label,
+                                    frames = sampled_points,
+                                    VID_NAME = ''.join([column,'_',str(label),'.mp4']),
+                                    SAVE_ROOT = ''.join([data.out_path, 'skeleton_vids/']))
 
 
-def skeleton_vid3D(data: Union[ds.DataStruct, np.ndarray],
-                   connectivity: Optional[ds.Connectivity]=None,
-                   frames: List = [3000,100000,5000000], 
-                   N_FRAMES: int = 300,
-                   VID_NAME: str = '0.mp4',
-                   SAVE_ROOT: str = './test/skeleton_vids/'):
+def skeleton_vid3D_expanded(data: Union[ds.DataStruct, np.ndarray],
+                            label: str,
+                            connectivity: Optional[ds.Connectivity]=None,
+                            frames: List = [3000,100000,5000000], 
+                            N_FRAMES: int = 150,
+                            VID_NAME: str = '0.mp4',
+                            SAVE_ROOT: str = './test/skeleton_vids/'):
     
 
     if isinstance(data, ds.DataStruct):
@@ -242,7 +307,114 @@ def skeleton_vid3D(data: Union[ds.DataStruct, np.ndarray],
 
     # set up video writer
     metadata = dict(title='dannce_visualization', artist='Matplotlib')
-    writer = FFMpegWriter(fps=90, metadata=metadata)
+    writer = FFMpegWriter(fps=90)#, metadata=metadata)
+
+    extent = [*data.ws.hist_range[0], *data.ws.hist_range[1]]
+    embed_vals = data.embed_vals[data.data['Cluster']==label]
+    colors = ["k","tab:blue","tab:green","tab:orange",
+              "tab:purple","tab:brown","tab:pink","tab:gray",
+              "tab:olive","tab:cyan","#dc0ab4","#00b7c7"]
+
+    # Setup figure
+    fig = plt.figure(figsize=(20, 10))
+    gs = fig.add_gridspec(1, 2)
+    ax_3d = fig.add_subplot(gs[0,1], projection='3d')
+    ax_dens = fig.add_subplot(gs[0,0])
+
+    cond_uniq = data.data['Condition'].unique()
+    frames_meta = data.data[data.data['frame_id'].isin(frames)]['Condition'].values
+
+    ax_dens.imshow(data.ws.watershed_map, zorder=0,
+                    extent=extent)
+    ax_dens.plot(embed_vals[:,0], embed_vals[:,1],'.r',markersize=1,alpha=0.1, zorder=1)
+    ax_dens.set_aspect('auto')
+    ax_dens.set_xticks([])
+    ax_dens.set_yticks([])
+
+    with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=200):
+
+        for curr_frame in tqdm.tqdm(range(N_FRAMES)):
+            # grab frames
+            curr_frames = curr_frame + np.arange(len(frames))*N_FRAMES
+            kpts_3d = np.reshape(pose_3d[curr_frames,:,:], (len(frames)*num_joints, 3))
+            
+            # plot 3d moving skeletons
+            for i in range(len(np.unique(frames_meta))):
+                temp_idx = curr_frames[frames_meta==np.unique(frames_meta)[i]]
+                temp_kpts = np.reshape([pose_3d[temp_idx,:,:]], (len(temp_idx)*num_joints,3))
+                ax_3d.scatter(temp_kpts[:, 0], temp_kpts[:, 1], temp_kpts[:, 2],  marker='.', color=colors[i], linewidths=0.5, label=cond_uniq[i])
+            ax_3d.legend()
+            for color, (index_from, index_to) in zip(COLOR, links_expand):
+                xs, ys, zs = [np.array([kpts_3d[index_from, j], kpts_3d[index_to, j]]) for j in range(3)] 
+                ax_3d.plot3D(xs, ys, zs, c=color, lw=2)
+
+            ax_3d.set_xlim(x_lim1, x_lim2)
+            ax_3d.set_ylim(y_lim1, y_lim2)
+            ax_3d.set_zlim(0, 150)
+            # ax_3d.set_xticks([])
+            # ax_3d.set_yticks([])
+            # ax_3d.set_zticks([])
+            # ax_3d.set_title("3D Tracking")
+            # ax_3d.set_aspect('equal')
+            ax_3d.set_box_aspect([1,1,0.4])
+
+            # grab frame and write to vid
+            writer.grab_frame()
+            fig.tight_layout()
+            ax_3d.clear()
+    
+    plt.close()
+    return 0
+
+
+def skeleton_vid3D(data: Union[ds.DataStruct, np.ndarray],
+                   connectivity: Optional[ds.Connectivity]=None,
+                   frames: List = [3000,100000,5000000], 
+                   N_FRAMES: int = 300,
+                   VID_NAME: str = '0.mp4',
+                   SAVE_ROOT: str = './test/skeleton_vids/'):
+
+    if isinstance(data, ds.DataStruct):
+        preds = data.pose_3d
+        connectivity = data.connectivity
+    else:
+        preds = data
+
+    if connectivity is None:
+        skeleton_name = 'mouse' + str(preds.shape[1])
+        connectivity = Connectivity().load('../../CAPTURE_data/skeletons.py',
+                                           skeleton_name='skeleton_name')
+
+    START_FRAME = np.array(frames) - int(N_FRAMES/2) + 1
+    COLOR = connectivity.colors*len(frames)
+    links = connectivity.links
+    links_expand = links
+    # total_frames = N_FRAMES*len(frames)#max(np.shape(f[list(f.keys())[0]]))
+
+    ## Expanding connectivity for each frame to be visualized
+    num_joints = max(max(links))+1
+    for i in range(len(frames)-1):
+        next_con = [(x+(i+1)*num_joints, y+(i+1)*num_joints) for x,y in links]
+        links_expand=links_expand+next_con
+
+    save_path = os.path.join(SAVE_ROOT)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    # get dannce predictions
+    pose_3d = np.empty((0, num_joints, 3))
+    for start in START_FRAME:
+        pose_3d = np.append(pose_3d, preds[start:start+N_FRAMES,:,:],axis=0)
+
+    # compute 3d grid limits 
+    offset = 50
+    x_lim1, x_lim2 = np.min(pose_3d[:, :, 0])-offset, np.max(pose_3d[:, :, 0])+offset
+    y_lim1, y_lim2 = np.min(pose_3d[:, :, 1])-offset, np.max(pose_3d[:, :, 1])+offset
+    z_lim1, z_lim2 = np.minimum(0, np.min(pose_3d[:, :, 2])), np.max(pose_3d[:, :, 2])+10
+
+    # set up video writer
+    # metadata = dict(title='dannce_visualization', artist='Matplotlib')
+    writer = FFMpegWriter(fps=90)#, metadata=metadata)
 
     
     # Setup figure
@@ -264,7 +436,8 @@ def skeleton_vid3D(data: Union[ds.DataStruct, np.ndarray],
             ax_3d.set_ylim(y_lim1, y_lim2)
             ax_3d.set_zlim(z_lim1, z_lim2)
             ax_3d.set_title("3D Tracking")
-            # ax_3d.set_box_aspect([1,1,1])
+            # ax_3d.set_aspect('equal')
+            ax_3d.set_box_aspect([1,1,0.4])
 
             # grab frame and write to vid
             writer.grab_frame()
