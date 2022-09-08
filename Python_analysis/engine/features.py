@@ -88,49 +88,23 @@ def spine_center_rot(pose):
         pose_rot: Centered and rotated pose (#frames x #joints x #coords)
     '''
     pose_center = pose - np.expand_dims(pose[:,4,:],axis=1)
-    
-    x_axis = np.repeat(np.expand_dims([1,0,],axis=0), pose_center.shape[0],axis=0)
-    # x_projection = np.einsum('xy,xy->x',pose_center[:,3,:2],x_axis)
-    # norm = np.sqrt(np.einsum('xy,xy->x',pose_center[:,3,:2],pose_center[:,3,:2])) #magnitudes
-    # theta_abs = np.arccos(x_projection/norm)
-    # theta = np.where(pose_center[:,3,1]>0, -theta_abs, theta_abs)
-
-    theta = -np.arctan2(pose_center[:,3,1],pose_center[:,3,0])#np.cross(pose_center[:,3,:2],x_axis)/x_projection)
-    # theta = np.where(pose_center[:,3,1]>0 & pose_center[:,3,0]<0, theta-np.pi, theta)
-    # theta = np.where(pose_center[:,3,1]<0 ^ pose_center[:,3,0]<0, np.pi+theta, theta)
-    # theta = -np.arctan(np.cross(pose_center[:,3,:2],x_axis)/x_projection)
-    # import pdb; pdb.set_trace()
-
-    # pose_rot = np.zeros(pose_center.shape)
-    # for i in tqdm.tqdm(range(len(theta))):
-    #     r = Rotation.from_rotvec(theta[i]*np.array([0,0,1]))
-    #     # rot_mat = np.array([[np.cos(theta[i]),-np.sin(theta[i]),0],
-    #     #                     [np.sin(theta[i]),np.cos(theta[i]),0],
-    #     #                     [0,0,1]])
-    #     # r = Rotation.from_quat([np.cos(theta[i]/2),0,0,np.sin(theta[i]/2)])
-    #     pose_rot[i,:,:] = r.apply(pose_center[i,:,:])ta
-    #     # import pdb; pdb.set_trace()
-    #     # pose_rot[i,:,:] = np.matmul(rot_mat,pose_center[i,:,:].T).T
-    #     # import pdb; pdb.set_trace()
+    theta = -np.arctan2(pose_center[:,3,1],pose_center[:,3,0])
 
     rot_mat = np.array([[np.cos(theta), -np.sin(theta), np.zeros(len(theta))],
                         [np.sin(theta), np.cos(theta), np.zeros(len(theta))],
                         [np.zeros(len(theta)), np.zeros(len(theta)), np.ones(len(theta))]]).repeat(18,axis=2)#.transpose((2,0,1))
     pose_rot = np.einsum("jki,ik->ij", rot_mat, np.reshape(pose_center,(-1,3))).reshape(pose_center.shape)
-    # import pdb; pdb.set_trace()
-    # pose_rot = scp.ndimage.median_filter(pose_rot,(5,1,1)) # Median filter
-    # import pdb; pdb.set_trace()
 
-    # pose_rot = rot_mat[:1000,:,:] @ pose_center.reshape(-1,3)[:1000,:].T
-    # pose_rot1 = np.matmul(rot_mat,np.reshape(pose_center,(pose_center.shape[0]*pose_center.shape[1],3)).T)
-
-    # rot = Rotation.align_vectors(pose_center[:,3,:], x_axis)
-
-    ## Median filter
     return pose_rot
 
 def get_angles(pose,
                link_pairs):
+    '''
+    Calculates 3 angles for pairs of linkage vectors
+    Angles calculated are those between projections of each vector onto the 3 xyz planes
+    IN:
+        pose: Centered and rotated pose (#frames, #joints, #)
+    '''
     angles = np.zeros((pose.shape[0],len(link_pairs),3))
     for i,pair in enumerate(link_pairs):
         v1 = pose[:,pair[0],:]-pose[:,pair[1],:]
