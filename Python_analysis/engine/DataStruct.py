@@ -322,7 +322,8 @@ class Connectivity:
     def __init__(self, 
                  joint_names: Optional[List[str]]=[None], 
                  colors: Optional[List[Tuple[float,float,float,float]]]=[None], 
-                 links: Optional[List[Tuple[int,int]]]=[None]):
+                 links: Optional[List[Tuple[int,int]]]=[None],
+                 angles: Optional[List[Tuple[int,int,int]]]=[None]):
 
         self.joint_names=joint_names
 
@@ -330,6 +331,7 @@ class Connectivity:
                      'colors':colors}
 
         self.conn_df = pd.DataFrame(data=conn_dict)
+        self.angles = angles
 
     @property
     def links(self):
@@ -352,7 +354,6 @@ class Connectivity:
     def load(self, 
              skeleton_path: str, 
              skeleton_name: str = 'mouse20'):
-
         '''
         Load in joint names, connectivities and colors for connectivites
         IN:
@@ -360,7 +361,6 @@ class Connectivity:
             skeleton_name: Key for correct skeleton in connectivity dict
 
         '''
-
         if skeleton_path.endswith('.py'):
             import importlib.util
             mod_spec = importlib.util.spec_from_file_location('connectivity',skeleton_path)
@@ -371,6 +371,7 @@ class Connectivity:
             self.joint_names = con.JOINT_NAME_DICT[skeleton_name] # joint names
             self.colors = con.COLOR_DICT[skeleton_name] # color to be plotted for each linkage
             self.links = con.CONNECTIVITY_DICT[skeleton_name] # joint linkages
+            self.angles = con.JOINT_ANGLES_DICT[skeleton_name] # angles to calculate
 
         return self
         
