@@ -1,13 +1,12 @@
-import DataStruct as ds
 import scipy as scp
 # from scipy.ndimage import median_filter, convolve
 from scipy.spatial.transform import Rotation as R
 import numpy as np
-import visualization as vis
-import tqdm
 import matplotlib.pyplot as plt
 from sklearn.decomposition import IncrementalPCA
 from typing import Optional, Union, List, Tuple
+import pandas as pd
+from tqdm import tqdm
 
 def align_floor(pose: np.array,
                 exp_id: Union[List, np.array],
@@ -25,9 +24,9 @@ def align_floor(pose: np.array,
         pose_rot: Floor aligned poses (#frames x #joints x #coords)
     '''
     pose_rot = pose
-    for i in np.unique(exp_id): # Separately for each video
+    for _,i in enumerate(tqdm(np.unique(exp_id))): # Separately for each video
         pose_exp = pose[exp_id == i,:,:]
-        pose_exp = scp.ndimage.median_filter(pose_exp,(5,1,1)) # Median filter 5 frames repeat the ends of video
+        pose_exp = scp.ndimage.median_filter(pose_exp,(4,1,1)) # Median filter 5 frames repeat the ends of video
 
         # Initial calculation of plane to find outlier values
         [xy,z] = [pose_exp[:,foot_id,:2],pose_exp[:,foot_id,2]]
@@ -78,24 +77,126 @@ def align_floor(pose: np.array,
 
     return pose_rot
 
+def center_spine(pose,
+                 joint_idx = 4):
+    # Center spine_m to (0,0,0)
+    return pose - np.expand_dims(pose[:,joint_idx,:],axis=1)
 
-def spine_center_rot(pose):
+def rotate_spine(pose,
+                 joint_idx = [4,3],
+                lock_to_x = False):
     '''
     Centers mid spine to (0,0,0) and aligns spine_m -> spine_f to x-z plane
     IN:
         pose: 3d matrix of (#frames x #joints x #coords)
+        joint_idx: List [spine_m idx, spine_f idx]
+        lock_to_x: Also rotates so that spine_m -> spine_f is locked to the x-axis
     OUT:
         pose_rot: Centered and rotated pose (#frames x #joints x #coords)
     '''
-    pose_center = pose - np.expand_dims(pose[:,4,:],axis=1)
-    theta = -np.arctan2(pose_center[:,3,1],pose_center[:,3,0])
+    # import pdb; pdb.set_trace()
+    num_joints = pose.shape[1]
+    yaw = -np.arctan2(pose[:,joint_idx[1],1],pose[:,joint_idx[1],0]) # Find angle to rotate to axis
 
-    rot_mat = np.array([[np.cos(theta), -np.sin(theta), np.zeros(len(theta))],
-                        [np.sin(theta), np.cos(theta), np.zeros(len(theta))],
-                        [np.zeros(len(theta)), np.zeros(len(theta)), np.ones(len(theta))]]).repeat(18,axis=2)#.transpose((2,0,1))
-    pose_rot = np.einsum("jki,ik->ij", rot_mat, np.reshape(pose_center,(-1,3))).reshape(pose_center.shape)
+    if lock_to_x:
+        pitch = -np.arctan2(pose[:,joint_idx[1],2],pose[:,joint_idx[1],0])
+    else:
+        pitch = np.zeros(yaw.shape)
+
+    # Rotation matrix for pitch and yaw
+    rot_mat = np.array([[np.cos(yaw)*np.cos(pitch), -np.sin(yaw), np.cos(yaw)*np.sin(pitch)],
+                        [np.sin(yaw)*np.cos(pitch), np.cos(yaw), np.sin(yaw)*np.sin(pitch)],
+                        [-np.sin(pitch), np.zeros(len(yaw)), np.cos(pitch)]]).repeat(num_joints,axis=2)
+    pose_rot = np.einsum("jki,ik->ij", rot_mat, np.reshape(pose,(-1,3))).reshape(pose.shape)
+
+    # Making sure Y value of spine f doesn't deviate much from 0
+    assert pose_rot[:,joint_idx[1],1].max()<1e-5 and pose_rot[:,joint_idx[1],1].min()>-1e-5
+    if lock_to_x: # Making sure Z value of spine f doesn't deviate much from 0
+        assert pose_rot[:,joint_idx[1],2].max()<1e-5 and pose_rot[:,joint_idx[1],2].min()>-1e-5
 
     return pose_rot
+
+def get_lengths(pose,
+                linkages):
+    '''
+    Get lengths of all linkages
+    '''
+    linkages = np.array(linkages)
+    lengths = np.square(pose[:,linkages[:,1],:]-pose[:,linkages[:,0],:])
+    lengths = np.sum(np.sqrt(lengths),axis=2)
+    return lengths
+
+def rolling_window(data, 
+                   window):
+    '''
+    Returns a view of data windowed (data.shape, window)
+    Pads the ends with the edge values
+    '''
+    try:
+        assert(window%2 == 1)
+    except ValueError:
+        print("Window size must be odd")
+    
+    # Padding frames with the edge values with (window size/2 - 1)
+    pad = int(np.floor(window/2))
+    d_pad = np.pad(data,((pad, pad),(0,0)), mode='edge').T
+    shape = d_pad.shape[:-1] + (d_pad.shape[-1] - pad*2, window)
+    strides = d_pad.strides + (d_pad.strides[-1],)
+    return np.swapaxes(np.lib.stride_tricks.as_strided(d_pad, shape=shape, strides=strides),0,1)
+
+def get_velocities(pose,
+                   exp_id,
+                   joint_names,
+                   joints=[0,3,5],
+                   widths=[5,11,51],
+                   sample_freq=90):
+    '''
+    Returns absolute velocity, as well as x, y, and z velocities over varying widths
+    Also returns the standard deviation of these velocities over varying widths
+    IN:
+        pose: Non-centered and and optional rotated pose (#frames, #joints, #xyz)
+        exp_id: Video ids per frame
+        joints: joints to calculate absolute velocities
+        widths: Number of frames to average velocity over (must be odd)
+        sample_freq: Sampling frequency of the videos
+    OUT:
+        vel: velocity features (#frames x #joints*#widths)
+    '''
+    ax_labels = ['vec','x','y','z']
+    vel = np.zeros((pose.shape[0],len(joints)*len(widths)*len(ax_labels)))
+    vel_stds = np.zeros(vel.shape)
+    vel_labels, std_labels = [], []
+
+    for _,i in enumerate(tqdm(np.unique(exp_id))): # Separating by video
+        pose_exp = pose[exp_id==i,:,:][:,joints,:]
+
+        # Calculate distance beetween  times t - (t-1)
+        temp_pose = np.append(np.expand_dims(pose_exp[0,:,:],axis=0),pose_exp[:-1,:,:],axis=0)
+        dxyz = np.reshape(pose_exp-temp_pose, (pose_exp.shape[0],-1)) # distance for each axis
+
+        # Appending Euclidean vector magnitude of distance and multiplying by sample_freq to get final velocities
+        dv = np.append(np.sqrt(np.sum(np.square(pose_exp-temp_pose),axis=2)),dxyz,axis=-1)*sample_freq
+
+        # Calculate average velocity and velocity stds over the windows
+        for j,width in enumerate(widths):
+            kernel = np.ones((width,1))/width
+            vel[exp_id==i,j*len(joints)*4:(j+1)*len(joints)*4] = scp.ndimage.convolve(dv, kernel, mode='constant')
+            vel_stds[exp_id==j,j*len(joints)*4:(j+1)*len(joints)*4] = np.std(rolling_window(dv, width),axis=-1)
+
+            if i==np.unique(exp_id)[0]:
+                vel_labels+= ['_'.join(['vel',ax,joint_names[joint],str(width)]) for joint in joints for ax in ax_labels]
+                std_labels+= ['_'.join(['vel_std',ax,joint_names[joint],str(width)]) for joint in joints for ax in ax_labels]
+    
+    vel_feats = pd.DataFrame(np.hstack((vel,vel_stds)), columns=vel_labels+std_labels)
+    return vel_feats
+
+def get_ego_pose(pose,
+                 joint_names):
+    '''
+    '''
+    pose = np.reshape(pose, (pose.shape[0],pose.shape[1]*pose.shape[2]))
+    import pdb; pdb.set_trace
+    labels = ['_'.join(['ego_euc', ])]
 
 def get_angles(pose,
                link_pairs):
@@ -103,66 +204,80 @@ def get_angles(pose,
     Calculates 3 angles for pairs of linkage vectors
     Angles calculated are those between projections of each vector onto the 3 xyz planes
     IN:
-        pose: Centered and rotated pose (#frames, #joints, #)
+        pose: Centered and rotated pose (#frames, #joints, #xyz)
+        link_pairs: List of tuples with 3 points between which to calculate angles
+    OUT:
+        angles: returns 3 angles between link pairs
     '''
     angles = np.zeros((pose.shape[0],len(link_pairs),3))
-    for i,pair in enumerate(link_pairs):
-        v1 = pose[:,pair[0],:]-pose[:,pair[1],:]
+    feat_labels = []
+    plane_dict = {'xy':[0,1],
+                  'xz':[0,2],
+                  'yz':[1,2]}
+    for i,pair in enumerate(tqdm(link_pairs)):
+        v1 = pose[:,pair[0],:]-pose[:,pair[1],:] #Calculate vectors
         v2 = pose[:,pair[2],:]-pose[:,pair[1],:]
-        
-        angles[:,i,0] = np.arctan2(v1[:,0],v1[:,1]) - np.arctan2(v2[:,0],v2[:,1])
-        angles[:,i,1] = np.arctan2(v1[:,0],v1[:,2]) - np.arctan2(v2[:,0],v2[:,2])
-        angles[:,i,2] = np.arctan2(v1[:,1],v1[:,2]) - np.arctan2(v2[:,1],v2[:,2])
+        for j,key in enumerate(plane_dict):
+            angles[:,i,j] = np.arctan2(v1[:,plane_dict[key][0]],v1[:,plane_dict[key][1]]) - \
+                            np.arctan2(v2[:,plane_dict[key][0]],v2[:,plane_dict[key][1]])
+            feat_labels += ['_'.join(['ang'] + [str(i) for i in pair] + [key])]
     
     # Fix all negative angles so that final is between 0 and 2pi
     angles = np.where(angles>0, angles, angles+2*np.pi)
-    # import pdb; pdb.set_trace()
+    angles = np.reshape(angles,(angles.shape[0],angles.shape[1]*angles.shape[2]))
+    angles = pd.DataFrame(angles, columns=feat_labels)
     return angles
 
-def get_lengths(pose,
-                linkages):
-    # import pdb; pdb.set_trace()
-    linkages = np.array(linkages)
-    lengths = np.square(pose[:,linkages[:,1],:]-pose[:,linkages[:,0],:])
-    lengths = np.sum(np.sqrt(lengths),axis=2)
-    return lengths
+def get_angular_vel(angles,
+                    exp_id,
+                    widths=[5,11,51],
+                    sample_freq = 90):
+    '''
+    Calculates angular velocity of previously defined angles
+    IN:
+        angles: Pandas dataframe of angles ()
+    '''
 
-def get_velocities(pose,
-                   exp_id,
-                   joints=[0,3,4,5],
-                   widths=[10,100,300]):
-
-    vel_feats = np.zeros((pose.shape[0],len(joints)*len(widths)))
-    for i in np.unique(exp_id):
-        pose_exp = pose[exp_id==i,joints,:]
-        # Calculate distance beetween  times t - (t-1)
-        temp_pose = np.append(np.expand_dims(pose_exp[0,:,:],axis=0),pose_exp[:-1,:,:],axis=0)
-        dv = np.sqrt(np.sum(np.square(pose_exp-temp_pose),axis=2))
-        # Calculate average velocity over the windows
+    ang = angles.to_numpy()
+    num_ang = angles.shape[1]
+    avel = np.zeros((angles.shape[0],num_ang*len(widths)))
+    avel_stds = np.zeros(avel.shape)
+    avel_labels, std_labels = [], []
+    for _,i in enumerate(tqdm(np.unique(exp_id))):
+        ang_exp = ang[exp_id==i,:]
+        prev_ang = np.append(np.expand_dims(ang_exp[0,:],axis=0),ang_exp[:-1,:],axis=0)
+        dtheta = (ang_exp - prev_ang)*sample_freq
         for j,width in enumerate(widths):
             kernel = np.ones((width,1))/width
-            vel_feats[exp_id==i,j*len(joints):(j+1)*len(joints)] = scp.ndimage.convolve(dv, kernel, mode='constant')
+            avel[exp_id==i,j*num_ang:(j+1)*num_ang] = scp.ndimage.convolve(dtheta, kernel, mode='constant')
+            avel_stds[exp_id==j,j*num_ang:(j+1)*num_ang] = np.std(rolling_window(dtheta, width),axis=-1)
 
-        # import pdb; pdb.set_trace()
+            if i == np.unique(exp_id)[0]:
+                avel_labels+=['_'.join([label.replace("ang","avel"),str(width)]) for label in angles.columns.to_list()]
+                std_labels+=['_'.join([label.replace("ang","avel_std"),str(width)]) for label in angles.columns.to_list()]
 
-    return vel_feats
+    avel_feats = pd.DataFrame(np.hstack((avel,avel_stds)), columns=avel_labels+std_labels)
+    import pdb; pdb.set_trace()
+
+    return avel_feats
 
 def get_head_angular(pose,
-                     exp_id,
-                     widths=[10,100,300],
-                     link = [0,3,4]):
+                    exp_id,
+                    widths=[5,10,50],
+                    link = [0,3,4]):
     '''
     Getting x-y angular velocity of head
-
+    IN:
+        pose: Non-centered, optional rotated pose
     '''
-    v1 = pose[:,0,:2]-pose[:,3,:2]
-    v2 = pose[:,4,:2]-pose[:,3,:2]
+    v1 = pose[:,link[0],:2]-pose[:,link[1],:2]
+    v2 = pose[:,link[2],:2]-pose[:,link[1],:2]
 
     angle= np.arctan2(v1[:,0],v1[:,1]) - np.arctan2(v2[:,0],v2[:,1])
     angle = np.where(angle>0, angle, angle+2*np.pi)
 
     angular_vel = np.zeros((len(angle),len(widths)))
-    for i in np.unique(exp_id):
+    for _,i in tqdm.tqdm(np.unique(exp_id)):
         angle_exp = angle[exp_id==i]
         d_angv = angle_exp - np.append(angle_exp[0],angle_exp[:-1])
         for i,width in enumerate(widths):
@@ -177,43 +292,11 @@ def wavelet(features,
             w0 = 5,):
     # scp.signal.morlet2(500, )
     widths = w0*sample_freq/(2*freq*np.pi)
+    freq_transform = np.zeros((features.shape[0],len(freq)*features.shape[1]))
     for i in range(features.shape[1]):
-        freq_transform = scp.signal.cwt(features[:,i],scp.signal.morlet2, widths, w=w0)
+        import pdb; pdb.set_trace()
+        freq_transform[:,(i-1)*len(freq):i*len(freq)] = scp.signal.cwt(features[:,i],scp.signal.morlet2, widths, w=w0)
     
 
 
-    return cwtm
-
-pose_struct = ds.DataStruct(config_path = '../configs/path_configs/embedding_analysis_dcc_r01.yaml')
-pose_struct.load_connectivity()
-pose_struct.load_pose()
-pose_struct.load_feats()
-
-pose_rot = align_floor(pose_struct.pose_3d, pose_struct.exp_ids_full, conn=pose_struct.csonnectivity)
-velocities = get_velocities(pose_rot, pose_struct.exp_ids_full)
-
-pose_rot = spine_center_rot(pose_rot)
-euc_vec = np.reshape(pose_rot, (pose_rot.shape[0],pose_rot.shape[1]*pose_rot.shape[2]))
-
-angles = get_angles(pose_rot,pose_struct.connectivity.angles)
-angles = np.reshape(angles,(angles.shape[0],angles.shape[1]*angles.shape[2]))
-
-link_lengths = get_lengths(pose_rot,pose_struct.exp_ids_full,pose_struct.connectivity.links)
-head_angular = get_head_angular(pose_rot, pose_struct.exp_ids_full)
-feats = np.concatenate((euc_vec, angles, link_lengths, velocities, head_angular),axis=1)
-
-import pdb; pdb.set_trace()
-#mean center before pca, separate for 
-ipca = IncrementalPCA(n_components=30, batch_size=100)
-feats_pca = ipca.fit_transform(feats)
-
-w_let = wavelet(feats_pca)
-
-import pdb; pdb.set_trace()
-
-vis.skeleton_vid3D(pose_rot,
-                   pose_struct.connectivity,
-                   frames=[1000],
-                   N_FRAMES = 300,
-                   VID_NAME='rotate_vid.mp4',
-                   SAVE_ROOT='./')
+    return freq_transform

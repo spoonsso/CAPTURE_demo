@@ -44,8 +44,8 @@ def scatter(data: Union[np.ndarray,ds.DataStruct],
             y = data[1,:]
 
     f = plt.figure()
-    plt.scatter(data[:,0], data[:,1], marker='.', s=marker_size, linewidths=0,
-                c=color,cmap='viridis_r', alpha=0.75)
+    plt.scatter(x, y, marker='.', s=marker_size, linewidths=0,
+                c=color,cmap='viridis_r', alpha=0.75, **kwargs)
     plt.xlabel('t-SNE 1')
     plt.ylabel('t-SNE 2')
     if color is not None:
@@ -53,7 +53,7 @@ def scatter(data: Union[np.ndarray,ds.DataStruct],
     if filepath:
         plt.savefig(filepath,dpi=400)
     plt.close()
-
+ 
 
     # plt.figure(figsize=[12,10])
     # unique_animalID = np.unique(df_tSNE['animalID'])
@@ -371,6 +371,7 @@ def skeleton_vid3D(data: Union[ds.DataStruct, np.ndarray],
                    connectivity: Optional[ds.Connectivity]=None,
                    frames: List = [3000,100000,5000000], 
                    N_FRAMES: int = 300,
+                   fps: int = 90,
                    VID_NAME: str = '0.mp4',
                    SAVE_ROOT: str = './test/skeleton_vids/'):
 
@@ -414,7 +415,7 @@ def skeleton_vid3D(data: Union[ds.DataStruct, np.ndarray],
 
     # set up video writer
     # metadata = dict(title='dannce_visualization', artist='Matplotlib')
-    writer = FFMpegWriter(fps=90)#, metadata=metadata)
+    writer = FFMpegWriter(fps=fps)#, metadata=metadata)
 
     
     # Setup figure
