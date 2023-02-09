@@ -4,7 +4,11 @@ ML_features = struct();
 
 %% get joint angle features
 %saggital/cross section (ie side view)
-fprintf('computing joing angles \n');
+fprintf('computing joint angles \n');
+
+disp("whos joint ang 1")
+whos
+[status,cmdout] = system('free -h','-echo');
 
 %% these are defined wrt the absolute coordinate system of the arena/animal
 %saggital/pitch is angle in the plane of the long axis of the
@@ -17,19 +21,19 @@ transverse_inds = [1,2];
 allangles_inds = [1,2,3]; %use on knees and arms
 %transverse_pairs
 
-   anglestruct = load_mouse_kyle_anglestruct() ;
-  switch linkname
-      case 'rats'
-       anglestruct = load_default_anglestruct() ;
-      case 'bird'
-       anglestruct = load_bird_anglestruct() ;
-           case 'mouse'
-   anglestruct = load_mouse_anglestruct() ;
-      case 'kyle_mouse'
-             anglestruct = load_mouse_kyle_anglestruct() ;
-      case 'taddy_mouse'
-             anglestruct = load_mouse_taddy_anglestruct() ;
-  end
+anglestruct = load_mouse_kyle_anglestruct() ;
+switch linkname
+    case 'rats'
+        anglestruct = load_default_anglestruct() ;
+    case 'bird'
+        anglestruct = load_bird_anglestruct() ;
+    case 'mouse'
+        anglestruct = load_mouse_anglestruct() ;
+    case 'kyle_mouse'
+        anglestruct = load_mouse_kyle_anglestruct() ;
+    case 'taddy_mouse'
+        anglestruct = load_mouse_taddy_anglestruct() ;
+end
 
 segment_pairs=anglestruct.segment_pairs;
 coronal_pairs=anglestruct.coronal_pairs;
@@ -38,16 +42,20 @@ transverse_pairs=anglestruct.transverse_pairs;
 planar_trios = anglestruct.planar_trios;
 %% load the variables in from the structfield
    %anglestruct_fieldnames = fieldnames(anglestruct);
-  assigns= structvars(anglestruct);
-  for kk=1:size(assigns,1)
-eval(  assigns(kk,:))
-  end
+assigns= structvars(anglestruct);
+for kk=1:size(assigns,1)
+    eval(  assigns(kk,:))
+end
 
 jointangle_struct = struct();
 %mean_seglengths = struct();
 all_seglengths = cell(1,numel(segment_pairs));
 all_segments = cell(1,numel(segment_pairs));
 transverse_seglengths = cell(1,numel(segment_pairs));
+
+disp("whos jointang 2")
+whos
+[status,cmdout] = system('free -h','-echo');
 
 ML_features.segment_pairs = segment_pairs;
 ML_features.include_angles = include_angles;
@@ -65,6 +73,10 @@ for ll = 1:numel(saggital_pairs)
 
 end
 
+disp("whos jointang 3")
+whos
+[status,cmdout] = system('free -h','-echo');
+
 for ll = 1:numel(coronal_pairs)
     vec1 =  mocapstruct.markers_aligned_preproc.(segment_pairs{coronal_pairs{ll}(1)}{1})-...
         mocapstruct.markers_aligned_preproc.(segment_pairs{coronal_pairs{ll}(1)}{2});
@@ -78,6 +90,9 @@ for ll = 1:numel(coronal_pairs)
         ./(sqrt(sum(vec1(:,coronal_inds).^2,2)).*sqrt(sum(vec2(:,coronal_inds).^2,2)))')'; 
 end
 
+disp("whos jointang 4")
+whos
+[status,cmdout] = system('free -h','-echo');
 
 %% transverse
 for ll = 1:numel(transverse_pairs)
@@ -90,9 +105,11 @@ for ll = 1:numel(transverse_pairs)
     jointangle_struct.(transverse_names{ll}) = ...
         acosd(dot(vec1(:,transverse_inds)',vec2(:,transverse_inds)')...
         ./(sqrt(sum(vec1(:,transverse_inds).^2,2)).*sqrt(sum(vec2(:,transverse_inds).^2,2)))')';
-
-    
 end
+
+disp("whos jointang 5")
+whos
+[status,cmdout] = system('free -h','-echo');
 
 for ll = 1:numel(transverse_pairs)
      vec1 =  mocapstruct.markers_aligned_preproc.(segment_pairs{transverse_pairs{ll}(1)}{1})-...

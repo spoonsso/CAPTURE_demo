@@ -149,7 +149,7 @@ for lk = reshape(frame_inds,1,[])%1:10:10000
                 
                 
                 
-                hold on
+                hold on;
                 marker_plot(jj) = 1;
             else
                 marker_plot(jj) = 0;
@@ -160,9 +160,9 @@ for lk = reshape(frame_inds,1,[])%1:10:10000
     
     %% plot the links between markers
     for mm = 1:numel(mocapstruct.links)
-        if numel(mocapstruct.links{mm})
-            if (ismember(mocapstruct.links{mm}(1),1:numel(mocapstruct.markernames)) && ismember(mocapstruct.links{mm}(2),1:numel(mocapstruct.markernames))) && mocapstruct.links{mm}(1) ~= 8 mocapstruct.links{mm}(2) ~= 8
-                if (marker_plot(mocapstruct.links{mm}(1)) == 1 && marker_plot(mocapstruct.links{mm}(2)) == 1)
+        if numel(mocapstruct.links{mm});
+            if (ismember(mocapstruct.links{mm}(1),1:numel(mocapstruct.markernames)) && ismember(mocapstruct.links{mm}(2),1:numel(mocapstruct.markernames))) && mocapstruct.links{mm}(1) ~= 8 mocapstruct.links{mm}(2) ~= 8;
+                if (marker_plot(mocapstruct.links{mm}(1)) == 1 && marker_plot(mocapstruct.links{mm}(2)) == 1);
                     
                     %                     xx = [squeeze(mocapstruct.markers_aligned_preproc.(mocapstruct.markernames{mocapstruct.links{mm}(1)})(ind_to_plot,1)) ...
                     %                         squeeze(mocapstruct.markers_aligned_preproc.(mocapstruct.markernames{mocapstruct.links{mm}(2)})(ind_to_plot,1)) ];
@@ -170,11 +170,10 @@ for lk = reshape(frame_inds,1,[])%1:10:10000
                     %                         squeeze(mocapstruct.markers_aligned_preproc.(mocapstruct.markernames{mocapstruct.links{mm}(2)})(ind_to_plot,2))];
                     %                     zz = [squeeze(mocapstruct.markers_aligned_preproc.(mocapstruct.markernames{mocapstruct.links{mm}(1)})(ind_to_plot,3)) ...
                     %                         squeeze(mocapstruct.markers_aligned_preproc.(mocapstruct.markernames{mocapstruct.links{mm}(2)})(ind_to_plot,3))];
-                    
                     xx = [squeeze(rotd3d(1,mocapstruct.links{mm}(1))),squeeze(rotd3d(1,mocapstruct.links{mm}(2)))];
                     yy = [squeeze(rotd3d(2,mocapstruct.links{mm}(1))),squeeze(rotd3d(2,mocapstruct.links{mm}(2)))];
                     zz = [squeeze(rotd3d(3,mocapstruct.links{mm}(1))),squeeze(rotd3d(3,mocapstruct.links{mm}(2)))];
-                    line(xx,yy,zz,'Color','k','LineWidth',0.8)%mocapstruct.markercolor{mocapstruct.links{mm}(1)},'LineWidth',3);
+                    line(xx,yy,zz,'Color','k','LineWidth',0.8);%mocapstruct.markercolor{mocapstruct.links{mm}(1)},'LineWidth',3);
                 end
                 
             end
@@ -183,9 +182,9 @@ for lk = reshape(frame_inds,1,[])%1:10:10000
     
     view([5.1,12]);
     title(num2str(lk));
-    drawnow
+    drawnow;
     
-    hold off
+    hold off;
     %keyboard;
     
     frame_last = lk;

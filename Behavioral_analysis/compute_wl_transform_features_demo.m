@@ -1,7 +1,8 @@
-function ML_features = compute_wl_transform_features_demo(mocapstruct,ML_features,coeffstruct_in,overwrite_coeff)
+function ML_features = compute_wl_transform_features_demo(ML_features,coeffstruct_in,overwrite_coeff,fps)
 % function to compute wavelet transform for a set of features. change
 % properties below. 
-if exist(coeffstruct_in,'file')
+a = exist(append(coeffstruct_in,'.mat'),'file')==2
+if exist(append(coeffstruct_in,'.mat'),'file')==2 && overwrite_coeff ==0
     try
 coeffstruct = load(coeffstruct_in);
     catch ME
@@ -11,8 +12,12 @@ else
     coeffstruct = struct();
 end
 
+disp("whos12")
+whos
+[status,cmdout] = system('free -h','-echo');
+
 %% spectrogram parameters
-opts.fps =300./1;
+opts.fps = fps; %Changed from 300
 opts.clustering_window = opts.fps./2;
 opts.clustering_overlap = opts.fps./4;
 opts.numclusters = 100;
@@ -42,8 +47,8 @@ opts.lambda = 0.1; % regularization
 
         num_spectrogram_pcs= 15;
 
-params.fps = 300;
-params.difforder = 10;
+params.fps = fps; %Changed from 300
+params.difforder = round(10*params.fps/300);
 params.medfiltorder = 3;
 params.gaussorder = 2.5;
 %% get the appendage segment length pcs as well
@@ -76,30 +81,42 @@ fprintf('starting group %f joint angles \n',kk)
         frame_fragment(find(isinf(frame_fragment))) =0;
         frame_fragment = real(frame_fragment);
         opts.samprate = opts.fps./spacing; 
-        [wavelet_coeffs,w_map,fr_wavelet]= return_wavelets(frame_fragment(1:spacing:end,1),1:size(frame_fragment(1:spacing:end,1),1),opts);
+        [~,w_map,~]= return_wavelets(frame_fragment(1:spacing:end,1),1:size(frame_fragment(1:spacing:end,1),1),opts);
         w_map = w_map+3;
         w_map(w_map<0) = 0;
         agg_features_wl = cat(2,agg_features_wl,w_map);
     end
-    
+    clear w_map;
+    agg_features_wl = single(agg_features_wl);
+    disp("whos13")
+    whos
+    [status,cmdout] = system('free -h','-echo');
+    ML_features = rmfield(ML_features, {'appendage_joint_angles_pcs_hipass'})
+    % evalin('caller','ML_features = rmfield(ML_features, {''appendage_joint_angles_pcs_hipassclip''})')
+
+    disp("whos14")
+    whos
+    [status,cmdout] = system('free -h','-echo');
     %% load from file
      %% load coeffs
     coeffname_appendage =strcat('COEFFS_appendages_wl',num2str(kk));
     explainedname_appendage =strcat('EXPLAINED_appendages_wl',num2str(kk));
-
-              if (~isfield(coeffstruct,coeffname_appendage) || overwrite_coeff)
-                                    fprintf('OVERWRITING APPENDAGes WL \n')
-    [COEFFS_feat_wl_appendages{kk}, ~, ~, ~,explained_wl_appendages{kk}] = pca(squeeze(agg_features_wl));
-    coeffstruct.(coeffname_appendage) = COEFFS_feat_wl_appendages{kk};
+    if (~isfield(coeffstruct,coeffname_appendage) || overwrite_coeff)
+                        fprintf('OVERWRITING APPENDAGes WL \n')
+        [COEFFS_feat_wl_appendages{kk}, ~, ~, ~,explained_wl_appendages{kk}] = pca(squeeze(agg_features_wl));
+        coeffstruct.(coeffname_appendage) = COEFFS_feat_wl_appendages{kk};
         coeffstruct.(explainedname_appendage) = explained_wl_appendages{kk};
-              else
-              COEFFS_feat_wl_appendages{kk} = coeffstruct.(coeffname_appendage);   
-              explained_wl_appendages{kk} = coeffstruct.(explainedname_appendage);   
-              end
-              agg_features_wl = bsxfun(@minus,agg_features_wl,mean(agg_features_wl,1));
-                 %multiply out
-              dyadic_spectrograms_score_wl_appendages{kk} = agg_features_wl*COEFFS_feat_wl_appendages{kk};
-           
+    else
+        COEFFS_feat_wl_appendages{kk} = coeffstruct.(coeffname_appendage);   
+        explained_wl_appendages{kk} = coeffstruct.(explainedname_appendage);   
+    end
+    agg_features_wl = bsxfun(@minus,agg_features_wl,mean(agg_features_wl,1));
+        %multiply out
+    dyadic_spectrograms_score_wl_appendages{kk} = agg_features_wl*COEFFS_feat_wl_appendages{kk};
+    clear agg_features_wl;
+    disp("whos15")
+    whos
+    [status,cmdout] = system('free -h','-echo');
 
     
     %% replicate elements to fill in
@@ -118,7 +135,9 @@ fprintf('starting group %f joint angles \n',kk)
     dyadic_spectrograms_score_wl_appendages{kk} = cat(1,dyadic_spectrograms_score_wl_appendages{kk},zeros(1,size(dyadic_spectrograms_score_wl_appendages{kk},2)));
 
 %% save wavelet coefficients here
-
+    disp("whos16")
+    whos
+    [status,cmdout] = system('free -h','-echo');
 %%  ---------------------------------
 fprintf('starting group %f euclidean \n',kk)
     agg_features_wl_euc = [];
@@ -131,28 +150,46 @@ fprintf('starting group %f euclidean \n',kk)
         frame_fragment(find(isinf(frame_fragment))) =0;
         frame_fragment = real(frame_fragment);
         opts.samprate = opts.fps./spacing; 
-        [wavelet_coeffs,w_map,fr_wavelet]= return_wavelets(frame_fragment(1:6:end,1),1:size(frame_fragment(1:6:end,1),1),opts);
+        [~,w_map,~]= return_wavelets(frame_fragment(1:spacing:end,1),1:size(frame_fragment(1:spacing:end,1),1),opts);
         w_map = w_map+3;
         w_map(w_map<0) = 0;
         agg_features_wl_euc = cat(2,agg_features_wl_euc,w_map);
     end
+    clear w_map;
+
+    agg_features_wl_euc = single(agg_features_wl_euc);
+
+    disp("whos17")
+    whos
+    [status,cmdout] = system('free -h','-echo');
+
+    ML_features = rmfield(ML_features, {'appendage_pca_score_euc_hipassclip'})
+    % evalin('caller','ML_features = rmfield(ML_features, {''appendage_pca_score_euc_hipassclip''})')
+
+    disp("whos18")
+    whos
+    [status,cmdout] = system('free -h','-echo');
+
     
-     coeffname_appendage =strcat('COEFFS_appendages_wl_euc',num2str(kk));
+    coeffname_appendage =strcat('COEFFS_appendages_wl_euc',num2str(kk));
     explainedname_appendage =strcat('EXPLAINED_appendages_wl_euc',num2str(kk));
 
-              if (~isfield(coeffstruct,coeffname_appendage) || overwrite_coeff)
-                  fprintf('OVERWRITING APPENDAGes WL \n')
-    [COEFFS_feat_wl_appendages_euc{kk}, ~, ~, ~,explained_wl_appendages_euc{kk}] = pca(squeeze(agg_features_wl_euc));
-    coeffstruct.(coeffname_appendage) = COEFFS_feat_wl_appendages_euc{kk};
+    if (~isfield(coeffstruct,coeffname_appendage) || overwrite_coeff)
+        fprintf('OVERWRITING APPENDAGes WL \n')
+        [COEFFS_feat_wl_appendages_euc{kk}, ~, ~, ~,explained_wl_appendages_euc{kk}] = pca(squeeze(agg_features_wl_euc));
+        coeffstruct.(coeffname_appendage) = COEFFS_feat_wl_appendages_euc{kk};
         coeffstruct.(explainedname_appendage) = explained_wl_appendages_euc{kk};
-              else
-              COEFFS_feat_wl_appendages_euc{kk} = coeffstruct.(coeffname_appendage);   
-              explained_wl_appendages_euc{kk} = coeffstruct.(explainedname_appendage);   
-              end
-              agg_features_wl_euc = bsxfun(@minus,agg_features_wl_euc,mean(agg_features_wl_euc,1));
-                 %multiply out
+    else
+        COEFFS_feat_wl_appendages_euc{kk} = coeffstruct.(coeffname_appendage);   
+        explained_wl_appendages_euc{kk} = coeffstruct.(explainedname_appendage);   
+    end
+    agg_features_wl_euc = bsxfun(@minus,agg_features_wl_euc,mean(agg_features_wl_euc,1));
+        %multiply out
     dyadic_spectrograms_score_wl_appendages_euc{kk} =agg_features_wl_euc*COEFFS_feat_wl_appendages_euc{kk};
-    
+    clear agg_features_wl_euc;
+    disp("whos19")
+    whos
+    [status,cmdout] = system('free -h','-echo');
     % replicate elements to fill in
     replication_factor_wl = spacing;%ceil(size(frame_fragment,1)./size(dyadic_spectrograms_score_wl_appendages{kk}(:,1),1));
     dyadic_spectrograms_score_wl_appendages_euc{kk} = repelem( dyadic_spectrograms_score_wl_appendages_euc{kk}(:,1:...
@@ -167,7 +204,9 @@ fprintf('starting group %f euclidean \n',kk)
     end
     
     dyadic_spectrograms_score_wl_appendages_euc{kk} = cat(1,dyadic_spectrograms_score_wl_appendages_euc{kk},zeros(1,size(dyadic_spectrograms_score_wl_appendages_euc{kk},2)));
-
+    disp("whos20")
+    whos
+    [status,cmdout] = system('free -h','-echo');
 ML_features.COEFFS_feat_wl_appendages_euc{kk} = COEFFS_feat_wl_appendages_euc{kk};
 ML_features.dyadic_spectrograms_score_wl_appendages_euc{kk} = dyadic_spectrograms_score_wl_appendages_euc{kk};
 ML_features.explained_wl_appendages_euc{kk} = explained_wl_appendages_euc{kk};

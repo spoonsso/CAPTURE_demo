@@ -1,7 +1,7 @@
 
 
 
-function [analysisstruct,hierarchystruct] =  CAPTURE_quickdemo(inputfile,ratnames,coefficientfilename,linkname)
+function [analysisstruct,hierarchystruct] =  CAPTURE_quickdemo(inputfile,ratnames,coefficientfilename,linkname,overwrite_coefficient,tsne_type,savedirectory)
 % File to generate tsne features and run reembedding on a mouse
 %      inputfile: a .mat file that contains a preprocessed dannce struct
 %                 (see preprocess_dannce)
@@ -28,7 +28,7 @@ function [analysisstruct,hierarchystruct] =  CAPTURE_quickdemo(inputfile,ratname
 %load mocap file
 if isempty(inputfile)
 datafile = ...
-    load('C:\Users\Jesse Marshall\Documents\GitHub\Movement_analysis\Cortex_analysis\DemoRepo\Data\nolj_Recording_day8_caff1_nolj_imputed.mat');
+    load('/hpc/group/tdunn/lq53/cap3/CAPTURE_demo/Species_specific_files/predictions.mat');
 else
     datafile = load(inputfile);
     if isstruct(datafile) && numel(fieldnames(datafile)) == 1
@@ -37,6 +37,8 @@ else
     end
 end
 mocapstruct = datafile;
+clear datafile;
+
 
 if isempty(coefficientfilename)
     coefficient_file = 'demo_coefficients.mat';
@@ -64,7 +66,6 @@ directory_here = pwd;
 %feature filename and whether or not to overwrite
 MLmatobjfile = 'myMLfeatures.mat';
 overwrite_MLmatobjfile = 1;
-overwrite_coefficient=1;
 
 %visualize the mocap data
 %animate_markers_nonaligned_fullmovie_demo(mocapstruct,1:10:10000);
@@ -82,14 +83,58 @@ else
     MLmatobj = load(MLmatobjfile);
 end
 
+if isempty(inputfile)
+    datafile = ...
+        load('/hpc/group/tdunn/lq53/cap3/CAPTURE_demo/Species_specific_files/predictions.mat');
+    else
+        datafile = load(inputfile);
+        if isstruct(datafile) && numel(fieldnames(datafile)) == 1
+            fname = fieldnames(datafile);
+            datafile = datafile.(fname{1});
+        end
+    end
+mocapstruct = datafile;
+clear datafile;
 % perform a tsne embedding subselecting every 50 frames
-analysisparams.tsnegranularity = 50;
+analysisparams.tsnegranularity = 1;
 
 %subselect a particular set of features
 analysisstruct = compute_tsne_features(MLmatobj,mocapstruct,analysisparams);
-
+aligned_mean_position = mocapstruct.aligned_mean_position;
+clear mocapstruct
+clear MLmatobj
 %run tsne
-zvals = tsne(analysisstruct.jt_features);
+disp("whos post jtfeatures")
+whos
+[status,cmdout] = system('free -h','-echo');
+% savedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/Species_specific_files/combined_tadross_full/fixed/';
+save(strcat(savedirectory,filesep,'anstruct_restinc_bonus_feat.mat'),'-struct','analysisstruct',...
+    '-v7.3')
+disp(size(analysisstruct.jt_features))
+if tsne_type=='old'
+    %%% Old tsne
+    tic
+    zvals = tsne(analysisstruct.jt_features);
+    toc
+elseif tsne_type=='gpu'
+    %%% GPU tSNE
+    pyenv;
+    np = py.importlib.import_module("numpy");
+    py.importlib.import_module("tsne_gpu");
+    features_np = py.numpy.array(analysisstruct.jt_features(:).');
+    features_np = features_np.reshape(py.int(size(analysisstruct.jt_features,1)), py.int(size(analysisstruct.jt_features,2)));
+    % tic
+    zvals = double(py.tsne_gpu.tsne_gpu(features_np));
+    % toc
+else
+    zvals = 0
+end
+zvals=0
+
+% save('tsne_embeddings.mat','zvals','zvals_gpu')
+% zvals_gpu_size = size(zvals_gpu)
+% pause
+
 figure(1)
 plot(zvals(:,1),zvals(:,2),'ob','MarkerFaceColor','b')
 analysisstruct.zValues = zvals;
@@ -103,12 +148,12 @@ analysisstruct.matchedconds = {[unique(analysisstruct.condition_inds)]}; %if run
 analysisstruct.conditions_to_run = [unique(analysisstruct.condition_inds)];
 analysisstruct.tsnegranularity = analysisparams.tsnegranularity;
 params.reorder=1;
-analysisstruct = compute_analysis_clusters_demo(analysisstruct,params);
+% analysisstruct = compute_analysis_clusters_demo(analysisstruct,params);
 
 %% behavior plots and movies
 analysisstruct.conditionnames = ratname;
 analysisstruct.ratnames = ratname;
-analysisstruct.filesizes = {size(mocapstruct.aligned_mean_position,1 );};
+analysisstruct.filesizes = {size(aligned_mean_position,1 );};
 
 %% plot a tsne map -- see plotting script for parameter definitions
 h1=figure(609)
@@ -120,7 +165,7 @@ params.sorted = 1;
 params.markersize = 1;
 params.coarseboundary =0;
 params.do_coarse = 0;
-plot_clustercolored_tsne(analysisstruct,1,params.watershed,h1,params)
+% plot_clustercolored_tsne(analysisstruct,1,params.watershed,h1,params)
 set(gcf,'Position',([100 100 1100 1100]))
 
 
@@ -130,15 +175,18 @@ axisparams.xlim = ([-400 400]);
 axisparams.ylim = ([-400 400]);
 figure(370);
 clf;
-animate_markers_nonaligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
-    find(analysisstruct.annot_reordered{end}==10),[],axisparams);
-animate_markers_aligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
-    find(analysisstruct.annot_reordered{end}==59));
+% animate_markers_nonaligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
+%     find(analysisstruct.annot_reordered{end}==10),[],axisparams);
+% animate_markers_aligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
+%     find(analysisstruct.annot_reordered{end}==59));
 
 %% or use extnded set of 140 features
 if strcmp(ratname,'myrat')
 MLmatobj_extra = create_extra_behavioral_features(mocapstruct,'myrat',savefilename,overwrite_coefficient,directory_here);
 jt_features_extra = load_extra_tsne_features(mocapstruct,MLmatobj_extra,analysisparams);
+
+save(strcat(savedirectory,filesep,'jt_features_extra.mat'),'-struct','jt_features_extra',...
+    '-v7.3')
 
 % look at tsne of these added features
 zvals_extra = tsne(jt_features_extra);
@@ -164,8 +212,8 @@ params.timescales = [1./4 2];
 
 analysisstruct.conditionnames = {'test'};
 analysisstruct.ratname = {ratname};
-
-hierarchystruct=   find_sequences_states_demo(analysisstruct,1,params);
+hierarchystruct = 0;
+% hierarchystruct=   find_sequences_states_demo(analysisstruct,1,params);
 
 %animate_markers_nonaligned_fullmovie_demo(analysisstruct.mocapstruct_reduced_agg{1},...
 %    find(hierarchystruct.clustered_behavior{1}==2));

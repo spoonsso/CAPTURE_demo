@@ -132,23 +132,51 @@ disp('finding PCs');
     wtAll(find(isinf(wtAll))) = 0;
      wtAll(find(isnan(wtAll))) = 0;
    
-if exist('pca_randomized')
-[U,S,V] = pca_randomized(wtAll, min(pcuse,size(wtAll,1)));
-coeff = zeros(size(wtAll,2),size(wtAll,2));
+% if exist('incremental_pca')
+%     disp("pca_randomized")
+%     % [U,S,V] = pca_randomized(wtAll, min(pcuse,size(wtAll,1)));
+%     % U_pca = U;
 
-score = U;
-coeff = S;
-% use only if don't have pca_randomized]
+% % coeff = zeros(size(wtAll,2),size(wtAll,2));
 
-explained = diag(S).*diag(S) ./ sum(diag(S).*diag(S));
+% % score = U;
+% % coeff = S;
+% % % use only if don't have pca_randomized]
 
-else
-[coeff,score,latent,tsquared,explained,mu] = pca(wtAll);
-[U,S,V] = svd(wtAll);
-end
+% % explained = diag(S).*diag(S) ./ sum(diag(S).*diag(S));
 
-feat_pcs = V;
-wavelet_coeffs = U;
+%     pyenv;
+%     np = py.importlib.import_module("numpy");
+%     py.importlib.import_module("incremental_pca");
+%     wtAll_np = py.numpy.array(wtAll(:).');
+%     wtAll_np = wtAll_np.reshape(py.int(size(wtAll,1)), py.int(size(wtAll,2)));
+
+
+%     % size(wtAll,1)
+%     % size(wtAll,2)
+%     % wtAll_np = np.asarray(wtAll);
+%     % size(wtAll_np)
+%     output = py.incremental_pca.incremental_pca(wtAll_np,py.int(20));%np.asarray(wtAll)),size(wtAll,1),size(wtAll,2));
+%     U = squeeze(double(py.numpy.array(output(1))));
+%     % U_ipca = U;
+%     % save('wavelets_pca.mat','U_pca','U_ipca')
+%     % pyenv;
+%     % sd = py.importlib.import_module("sklearn.decomposition");
+%     % np = py.importlib.import_module("numpy");
+
+%     % n_components = 10
+%     % batch_size = 100
+%     % ipca = sd.IncrementalPCA(n_components,batch_size);
+%     % U = double(ipca.fit_transform(np.asarray(wtAll)))
+
+% else
+%     disp("pca not randomized")
+% [coeff,score,latent,tsquared,explained,mu] = pca(tall(wtAll));
+% [U,S,V] = svd(tall(wtAll),"econ");
+% feat_pcs = V;
+% end
+
+wavelet_coeffs = 0;%U;
 % 
 % figure(667)
 % plot3(wavelet_coeffs(1:50:500000,4),wavelet_coeffs(1:50:500000,2),wavelet_coeffs(1:50:500000,3),'+')
