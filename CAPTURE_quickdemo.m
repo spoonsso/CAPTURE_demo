@@ -28,7 +28,7 @@ function [analysisstruct,hierarchystruct] =  CAPTURE_quickdemo(inputfile,ratname
 %load mocap file
 if isempty(inputfile)
 datafile = ...
-    load('C:\Users\Jesse Marshall\Documents\GitHub\Movement_analysis\Cortex_analysis\DemoRepo\Data\nolj_Recording_day8_caff1_nolj_imputed.mat');
+    load('/hpc/group/tdunn/lq53/cap3/CAPTURE_demo/Species_specific_files/predictions.mat');
 else
     datafile = load(inputfile);
     if isstruct(datafile) && numel(fieldnames(datafile)) == 1
@@ -85,7 +85,7 @@ end
 
 if isempty(inputfile)
     datafile = ...
-        load('C:\Users\Jesse Marshall\Documents\GitHub\Movement_analysis\Cortex_analysis\DemoRepo\Data\nolj_Recording_day8_caff1_nolj_imputed.mat');
+        load('/hpc/group/tdunn/lq53/cap3/CAPTURE_demo/Species_specific_files/predictions.mat');
     else
         datafile = load(inputfile);
         if isstruct(datafile) && numel(fieldnames(datafile)) == 1
@@ -111,24 +111,24 @@ whos
 save(strcat(savedirectory,filesep,'anstruct_restinc_bonus_feat.mat'),'-struct','analysisstruct',...
     '-v7.3')
 disp(size(analysisstruct.jt_features))
-% if tsne_type=='old'
-%     %%% Old tsne
-%     tic
-%     zvals = tsne(analysisstruct.jt_features);
-%     toc
-% elseif tsne_type=='gpu'
-%     %%% GPU tSNE
-%     pyenv;
-%     np = py.importlib.import_module("numpy");
-%     py.importlib.import_module("tsne_gpu");
-%     features_np = py.numpy.array(analysisstruct.jt_features(:).');
-%     features_np = features_np.reshape(py.int(size(analysisstruct.jt_features,1)), py.int(size(analysisstruct.jt_features,2)));
-%     % tic
-%     zvals = double(py.tsne_gpu.tsne_gpu(features_np));
-%     % toc
-% else
-%     zvals = 0
-% end
+if tsne_type=='old'
+    %%% Old tsne
+    tic
+    zvals = tsne(analysisstruct.jt_features);
+    toc
+elseif tsne_type=='gpu'
+    %%% GPU tSNE
+    pyenv;
+    np = py.importlib.import_module("numpy");
+    py.importlib.import_module("tsne_gpu");
+    features_np = py.numpy.array(analysisstruct.jt_features(:).');
+    features_np = features_np.reshape(py.int(size(analysisstruct.jt_features,1)), py.int(size(analysisstruct.jt_features,2)));
+    % tic
+    zvals = double(py.tsne_gpu.tsne_gpu(features_np));
+    % toc
+else
+    zvals = 0
+end
 zvals=0
 
 % save('tsne_embeddings.mat','zvals','zvals_gpu')

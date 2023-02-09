@@ -3,9 +3,11 @@
 % (C) Jesse D Marshall 2020
 %     Harvard University
 
-addpath(genpath('/hpc/group/tdunn/joshwu/CAPTURE_demo/'))
+addpath(genpath('/hpc/group/tdunn/lq53/cap3/CAPTURE_demo'))
 flag = int32(bitor(2,8))
-py.sys.setdlopenflags(flag);
+%py.sys.setdlopenflags(flag);
+
+predsfile='predictions.mat'
 
 if exist('preprocess_struct','var')==0
     preprocess_struct = 'ratception_struct'
@@ -14,7 +16,7 @@ else
 end
 
 if exist('tsne_type','var')==0
-    tsne_type='gpu'
+    tsne_type='old' %old, gpu is the new gpu one underdevelopemnts from josh
 else
     tsne_type
 end
@@ -37,6 +39,9 @@ else
     coeff_file
 end
 
+input_params.fastvelocity_threshold = -0.01;
+input_params.moving_threshold = -0.00001
+
 warning('off','MATLAB:chckxy:IgnoreNaN')
 
 input_params.fps = 90; %what is the fps of the video we are analyzing?
@@ -44,11 +49,12 @@ input_params.fps = 90; %what is the fps of the video we are analyzing?
 [fList,pList] = matlab.codetools.requiredFilesAndProducts('pd_analysis_demo.m');
 
 %% run the analysis
-basedirectory = '/hpc/group/tdunn/joshwu/CAPTURE_demo/CAPTURE_analysis/R01_RPPR/merged_hr1_2/';
+basedirectory = '/hpc/group/tdunn/lq53/cap3/CAPTURE_demo/Species_specific_files';
+savedirectory = '/hpc/group/tdunn/lq53/cap3/CAPTURE_demo/Species_specific_files/';
 %input predictions in DANNCE format
 animfilename = strcat(basedirectory,filesep,predsfile);
 %outputfile
-animfilename_out = strcat(basedirectory,filesep,preprocess_struct,'.mat');
+animfilename_out = strcat(savedirectory,filesep,preprocess_struct,'.mat');
 
 % input_params.SpineM_marker = 'centerBack';
 % input_params.SpineF_marker = 'backHead';
@@ -79,16 +85,16 @@ clear ratception_struct;
 %% do embedding
 [analysisstruct,hierarchystruct] = CAPTURE_quickdemo(...
     animfilename_out,...
-    'taddy_mouse',coeff_file,'taddy_mouse',overwrite_coefficient,tsne_type);
+    'taddy_mouse',coeff_file,'taddy_mouse',overwrite_coefficient,tsne_type,savedirectory);
 
 disp("saving myanalysisstruct")
-save(strcat(basedirectory,filesep,'myanalysisstruct',analysis_tag,'.mat'),'-struct','analysisstruct',...
+save(strcat(savedirectory,filesep,'myanalysisstruct',analysis_tag,'.mat'),'-struct','analysisstruct',...
     '-v7.3')
 % save(strcat(basedirectory,filesep,'myhierarchystruct.mat'),'-struct','hierarchystruct',...
 %     '-v7.3')
 
 %% plot the tsne
-plotfolder = strcat(basedirectory,filesep,'plots/');
+plotfolder = strcat(savedirectory,filesep,'plots/');
 mkdir(plotfolder)
 
 h1=figure(608)
